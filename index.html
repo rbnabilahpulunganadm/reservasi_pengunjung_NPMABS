@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservasi - Klinik Nabilah Pulungan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #FDF2F8; /* Soft Pink Background */
+        }
+        .font-mplus {
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+        }
+        .main-container {
+            max-width: 500px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background-color: white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        .navbar {
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .nav-item.active svg, .nav-item.active span {
+            color: #DB2777; /* Pink-700 */
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #FDF2F8;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #F472B6; /* Pink-400 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #DB2777; /* Pink-700 */
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .form-input, .form-select, .form-textarea {
+            border-width: 1px;
+            border-color: #FBCFE8; /* Pink-200 */
+            transition: all 0.3s ease;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #DB2777; /* Pink-700 */
+            box-shadow: 0 0 0 2px #FCE7F3; /* Pink-100 */
+        }
+        .btn-primary {
+            background-color: #EC4899; /* Pink-500 */
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #DB2777; /* Pink-700 */
+        }
+        .btn-secondary {
+            background-color: #FCE7F3; /* Pink-100 */
+            color: #DB2777; /* Pink-700 */
+        }
+        /* Style for the ticket to be generated as image */
+        #ticket-content {
+            background: url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="p" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M50 0 L100 25 L50 50 L0 25 Z M0 50 L50 75 L0 100 L-50 75 Z M100 50 L150 75 L100 100 L50 75 Z" fill="%23FCE7F3" /></pattern></defs><rect width="100%" height="100%" fill="white"/><rect width="100%" height="100%" fill="url(%23p)"/></svg>'), white;
+        }
+    </style>
+</head>
+<body class="bg-pink-50">
+
+<div id="app-container" class="main-container relative pb-20">
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="hidden fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500"></div>
+    </div>
+    
+    <!-- Modal for Therapist Name -->
+    <div id="therapist-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 class="text-xl font-bold text-pink-800 mb-4">Selesaikan Treatment</h3>
+            <p class="text-gray-600 mb-4">Masukkan nama Terapis yang menangani pasien ini.</p>
+            <input type="text" id="therapist-name" placeholder="Nama Terapis" class="w-full p-3 rounded-lg form-input mb-4">
+            <div class="flex justify-end gap-3">
+                <button onclick="hideTherapistModal()" class="py-2 px-4 rounded-lg btn-secondary font-semibold">Batal</button>
+                <button onclick="completeTreatment()" class="py-2 px-4 rounded-lg btn-primary font-semibold">Selesaikan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Queue Ticket -->
+    <div id="ticket-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h3 class="text-2xl font-bold text-center text-pink-800 mb-2 font-mplus">Reservasi Berhasil!</h3>
+            <p class="text-center text-gray-500 mb-4">Silakan simpan nomor antrian ini.</p>
+            <div id="ticket-content" class="border-2 border-dashed border-pink-300 rounded-xl p-4 mb-4">
+                <div class="text-center">
+                    <h4 class="font-mplus text-pink-700 font-bold text-lg">Klinik Nabilah Pulungan</h4>
+                    <p class="text-xs text-pink-500">Bukti Reservasi Treatment</p>
+                </div>
+                <div id="ticket-qrcode" class="flex justify-center my-3"></div>
+                <p class="text-center text-sm text-gray-700 mb-2">No. RME: <span id="ticket-rme" class="font-bold"></span></p>
+                <div class="border-t border-b border-pink-200 py-2 my-2 text-sm">
+                    <p><strong>Nama:</strong> <span id="ticket-name"></span></p>
+                    <p><strong>Treatment:</strong> <span id="ticket-treatment"></span></p>
+                    <p><strong>Jadwal:</strong> <span id="ticket-schedule"></span></p>
+                </div>
+                <p class="text-center font-bold text-4xl text-pink-600 font-mplus mt-2" id="ticket-queue-number"></p>
+                <p class="text-center text-xs text-gray-400 mt-2">Terima kasih atas kunjungan Anda!</p>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button onclick="downloadTicket()" class="w-full py-3 px-4 rounded-lg btn-primary font-semibold flex items-center justify-center gap-2"><i class="fas fa-download"></i> Unduh Nomor Antrian</button>
+                <button onclick="hideTicketModal()" class="w-full py-3 px-4 rounded-lg btn-secondary font-semibold">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGES -->
+    <main class="p-4 sm:p-6">
+        <!-- PAGE 1: FORM RESERVASI -->
+        <div id="page-form" class="page active">
+            <header class="text-center mb-6">
+                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Reservasi Treatment</h1>
+                <p class="text-gray-500">Isi data untuk jadwal treatment Anda.</p>
+                 
+            </header>
+            
+            <div class="mb-4">
+                 <div class="relative">
+                    <input type="text" id="search-customer" placeholder="Cari Pelanggan (Nama/HP/IG/RME)" class="w-full p-3 pl-10 rounded-lg form-input">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+                <div id="search-results" class="bg-white border border-pink-200 rounded-lg mt-1 max-h-40 overflow-y-auto"></div>
+            </div>
+
+            <form id="reservation-form" class="space-y-4">
+                <h3 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2">Data Pemesan</h3>
+                <input type="hidden" id="rme">
+                <div>
+                    <label for="booker-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Pemesan</label>
+                    <input type="text" id="booker-name" class="w-full p-3 rounded-lg form-input" required>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">No. Telepon/WA</label>
+                        <input type="tel" id="phone" class="w-full p-3 rounded-lg form-input" required>
+                    </div>
+                    <div>
+                        <label for="instagram" class="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                        <input type="text" id="instagram" class="w-full p-3 rounded-lg form-input">
+                    </div>
+                </div>
+                <div>
+                    <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Alamat Domisili</label>
+                    <textarea id="address" rows="2" class="w-full p-3 rounded-lg form-textarea"></textarea>
+                </div>
+                
+                <h3 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2 pt-4">Data Pasien</h3>
+                <div>
+                    <label for="patient-name" class="block text-sm font-medium text-gray-700 mb-1">Nama (yang ingin treatment)</label>
+                    <input type="text" id="patient-name" class="w-full p-3 rounded-lg form-input" required>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir</label>
+                        <input type="date" id="dob" class="w-full p-3 rounded-lg form-input" required>
+                    </div>
+                    <div>
+                        <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Usia</label>
+                        <input type="text" id="age" class="w-full p-3 rounded-lg form-input bg-pink-50" readonly>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center"><input type="radio" name="gender" value="Perempuan" class="mr-2 text-pink-500 focus:ring-pink-500" checked> Perempuan</label>
+                        <label class="flex items-center"><input type="radio" name="gender" value="Laki-laki" class="mr-2 text-pink-500 focus:ring-pink-500"> Laki-laki</label>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2 pt-4">Detail Treatment</h3>
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Kategori Treatment</label>
+                    <select id="category" class="w-full p-3 rounded-lg form-select">
+                        <option>Baby/Kid Spa</option>
+                        <option>Ladies Spa</option>
+                        <option>Mom/Bumil/Nifas Spa</option>
+                        <option>Tindik dr Evoo</option>
+                        <option>ANC/Senam</option>
+                        <option>Umum</option>
+                        <option>Partus/Melahirkan</option>
+                        <option>Homecare</option>
+                        <option value="other">Lainnya...</option>
+                    </select>
+                    <input type="text" id="category-other" class="hidden w-full p-3 mt-2 rounded-lg form-input" placeholder="Ketik kategori lainnya">
+                </div>
+
+                <div id="treatments-container">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa 1</label>
+                        <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" placeholder="Nama paket treatment" required>
+                    </div>
+                </div>
+                <button type="button" onclick="addTreatmentField()" class="text-sm text-pink-600 font-semibold hover:underline">+ Tambah Treatment Lain</button>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ada Keluhan?</label>
+                    <div class="flex gap-4">
+                        <label class="flex items-center"><input type="radio" name="complaint_toggle" value="ya" class="mr-2 text-pink-500 focus:ring-pink-500"> Ya</label>
+                        <label class="flex items-center"><input type="radio" name="complaint_toggle" value="tidak" class="mr-2 text-pink-500 focus:ring-pink-500" checked> Tidak</label>
+                    </div>
+                    <textarea id="complaint-text" rows="2" class="hidden w-full p-3 mt-2 rounded-lg form-textarea" placeholder="Sebutkan keluhan Anda"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="booking-date" class="block text-sm font-medium text-gray-700 mb-1">Rencana Datang (Tanggal)</label>
+                        <input type="date" id="booking-date" class="w-full p-3 rounded-lg form-input" required>
+                    </div>
+                    <div>
+                        <label for="booking-time" class="block text-sm font-medium text-gray-700 mb-1">Jam</label>
+                        <select id="booking-time" class="w-full p-3 rounded-lg form-select" required>
+                            <!-- Jam akan diisi oleh JavaScript -->
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full mt-6 py-4 rounded-xl btn-primary font-bold text-lg shadow-lg shadow-pink-500/30">
+                    <i class="fas fa-calendar-check mr-2"></i> Buat Reservasi
+                </button>
+            </form>
+        </div>
+
+        <!-- PAGE 2: DAFTAR RESERVASI -->
+        <div id="page-list" class="page">
+            <header class="mb-6">
+                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Daftar Reservasi</h1>
+                <div class="relative mt-4">
+                    <input type="text" id="search-reservations" placeholder="Cari di daftar reservasi..." class="w-full p-3 pl-10 rounded-lg form-input">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </header>
+            <div id="reservation-list" class="space-y-4">
+                <!-- Daftar reservasi akan ditampilkan di sini -->
+                 <p class="text-center text-gray-500 mt-10">Belum ada reservasi.</p>
+            </div>
+        </div>
+
+        <!-- PAGE 3: LAPORAN STATISTIK -->
+        <div id="page-stats" class="page">
+            <header class="mb-6">
+                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Laporan Statistik</h1>
+                <p class="text-gray-500">Pantau performa klinik Anda.</p>
+            </header>
+            <div class="flex justify-center gap-2 mb-6">
+                <button onclick="generateStats('today')" class="stat-button flex-1 py-2 px-3 bg-pink-100 text-pink-700 rounded-lg font-semibold">Hari Ini</button>
+                <button onclick="generateStats('week')" class="stat-button flex-1 py-2 px-3 bg-pink-100 text-pink-700 rounded-lg font-semibold">Pekan Ini</button>
+                <button onclick="generateStats('month')" class="stat-button flex-1 py-2 px-3 bg-pink-100 text-pink-700 rounded-lg font-semibold">Bulan Ini</button>
+            </div>
+             
+            <div id="stats-content" class="space-y-4">
+                <!-- Statistik akan ditampilkan di sini -->
+            </div>
+        </div>
+        
+        <!-- PAGE 4: PANDUAN -->
+        <div id="page-guide" class="page">
+             <header class="mb-6">
+                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Panduan Aplikasi</h1>
+                <p class="text-gray-500">Cara menggunakan aplikasi reservasi.</p>
+            </header>
+            <div class="space-y-6 text-gray-700">
+                <div>
+                    <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-plus-circle"></i>Membuat Reservasi Baru</h3>
+                    <p class="mt-1 ml-6">Gunakan tab 'Reservasi Baru'. Isi semua data yang diperlukan. Jika pelanggan sudah pernah datang, gunakan fitur 'Cari Pelanggan' di bagian atas untuk mengisi data secara otomatis.</p>
+                </div>
+                 <div>
+                    <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-list-alt"></i>Melihat Daftar Reservasi</h3>
+                    <p class="mt-1 ml-6">Buka tab 'Daftar'. Di sini Anda bisa melihat semua reservasi yang masuk. Gunakan bar pencarian untuk menemukan reservasi spesifik.</p>
+                </div>
+                 <div>
+                    <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-tasks"></i>Mengubah Status Treatment</h3>
+                    <p class="mt-1 ml-6">Di tab 'Daftar', setiap kartu reservasi memiliki tombol aksi. Klik 'Mulai Treatment' saat pasien mulai dilayani. Setelah selesai, klik 'Selesaikan', isi nama terapis, dan status akan berubah menjadi 'Selesai'.</p>
+                </div>
+                 <div>
+                    <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-chart-pie"></i>Melihat Laporan</h3>
+                    <p class="mt-1 ml-6">Tab 'Laporan' menyajikan data statistik kunjungan. Pilih periode (hari ini, pekan ini, bulan ini) untuk melihat ringkasan data yang informatif.</p>
+                </div>
+                 <div>
+                    <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-download"></i>Mencetak Nomor Antrian</h3>
+                    <p class="mt-1 ml-6">Setelah reservasi berhasil dibuat, akan muncul pop-up nomor antrian. Klik tombol 'Unduh Nomor Antrian' untuk menyimpannya sebagai gambar/foto di perangkat Anda.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] bg-white/80 backdrop-blur-sm border-t border-pink-100 flex justify-around navbar">
+        <button onclick="showPage('page-form')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600 transition-colors active">
+            <i class="fas fa-plus-circle text-2xl"></i>
+            <span class="block text-xs font-medium">Reservasi Baru</span>
+        </button>
+        <button onclick="showPage('page-list')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600 transition-colors">
+            <i class="fas fa-list-alt text-2xl"></i>
+            <span class="block text-xs font-medium">Daftar</span>
+        </button>
+        <button onclick="showPage('page-stats')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600 transition-colors">
+            <i class="fas fa-chart-pie text-2xl"></i>
+            <span class="block text-xs font-medium">Laporan</span>
+        </button>
+        <button onclick="showPage('page-guide')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600 transition-colors">
+            <i class="fas fa-book text-2xl"></i>
+            <span class="block text-xs font-medium">Panduan</span>
+        </button>
+    </nav>
+</div>
+
+
+<script>
+// --- KONFIGURASI ---
+// Ganti dengan URL Web App Google Apps Script Anda setelah dideploy
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzOLXMSDfq4ZK-CUvwXV5oOzw46DZTPUMXMyJgVw6N4alICh77_TYV7i3RJgXrOK0LPJg/exec'; 
+
+// --- STATE APLIKASI ---
+let reservations = [];
+let customers = []; // Untuk menyimpan data pelanggan unik
+let treatmentCounter = 1;
+let currentlyEditingReservationId = null;
+
+// --- DOM ELEMENTS ---
+const dobInput = document.getElementById('dob');
+const ageInput = document.getElementById('age');
+const categorySelect = document.getElementById('category');
+const categoryOtherInput = document.getElementById('category-other');
+const complaintToggle = document.querySelectorAll('input[name="complaint_toggle"]');
+const complaintText = document.getElementById('complaint-text');
+const reservationForm = document.getElementById('reservation-form');
+const bookingDateInput = document.getElementById('booking-date');
+const bookingTimeSelect = document.getElementById('booking-time');
+const searchCustomerInput = document.getElementById('search-customer');
+const searchResultsContainer = document.getElementById('search-results');
+const searchReservationsInput = document.getElementById('search-reservations');
+
+
+// --- FUNGSI UTAMA ---
+document.addEventListener('DOMContentLoaded', () => {
+    fetchInitialData(); // PANGGIL FUNGSI UNTUK MENGAMBIL DATA AWAL
+
+    // Inisialisasi: set tanggal minimum dan isi opsi jam
+    const today = new Date().toISOString().split('T')[0];
+    dobInput.max = today;
+    bookingDateInput.min = today;
+    
+    showPage('page-form');
+
+    // Event Listeners
+    dobInput.addEventListener('change', calculateAge);
+    categorySelect.addEventListener('change', handleCategoryChange);
+    complaintToggle.forEach(radio => radio.addEventListener('change', handleComplaintToggle));
+    reservationForm.addEventListener('submit', handleFormSubmit);
+    bookingDateInput.addEventListener('change', populateTimeSlots);
+    bookingTimeSelect.addEventListener('change', populateTimeSlots);
+    searchCustomerInput.addEventListener('input', handleCustomerSearch);
+    searchReservationsInput.addEventListener('input', () => renderReservationList(searchReservationsInput.value));
+});
+
+// FUNGSI BARU UNTUK MENGAMBIL DATA DARI GOOGLE SHEET
+async function fetchInitialData() {
+    showLoading();
+    if (GOOGLE_SCRIPT_URL === 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
+        console.warn("URL Google Script belum diatur. Mode Offline.");
+        hideLoading();
+        // Inisialisasi tampilan awal jika offline
+        populateTimeSlots();
+        renderReservationList();
+        return;
+    }
+
+    try {
+        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
+        const data = await response.json();
+
+        if (data && data.reservations && data.customers) {
+            // Ubah format tanggal agar konsisten jika perlu (Apps Script kadang mengembalikan format lengkap)
+            reservations = data.reservations.map(r => ({
+                ...r,
+                // Pastikan nama properti sesuai dengan header di Google Sheet
+                id: r.ID,
+                timestamp: r.Timestamp, 
+                rme: r.RME,
+                bookerName: r['Nama Pemesan'],
+                phone: r.Telepon,
+                instagram: r.Instagram,
+                address: r.Alamat,
+                patientName: r['Nama Pasien'],
+                dob: r['Tgl Lahir'],
+                age: r.Usia,
+                gender: r.Gender,
+                category: r.Kategori,
+                treatments: r.Treatments,
+                hasComplaint: r['Ada Keluhan'],
+                complaintText: r['Detail Keluhan'],
+                bookingDate: new Date(r['Tgl Booking']).toISOString().split('T')[0],
+                bookingTime: r['Jam Booking'],
+                status: r.Status,
+                therapist: r.Terapis
+            }));
+            
+            // Konversi nama properti dari header sheet ke camelCase yang dipakai di JS
+            customers = data.customers.map(c => ({
+                rme: c.RME,
+                patientName: c['Nama Pasien'],
+                bookerName: c['Nama Pemesan'],
+                phone: c.Telepon,
+                instagram: c.Instagram,
+                address: c.Alamat,
+                dob: new Date(c['Tgl Lahir']).toISOString().split('T')[0],
+                gender: c.Gender
+            }));
+            
+            console.log("Data berhasil diambil:", { reservations, customers });
+        }
+    } catch (error) {
+        console.error("Gagal mengambil data dari Google Sheet:", error);
+        alert("Tidak dapat memuat data dari server. Aplikasi mungkin berjalan dalam mode offline.");
+    } finally {
+        // Setelah data diambil (atau gagal), baru render tampilan
+        populateTimeSlots();
+        renderReservationList();
+        hideLoading();
+    }
+}
+
+
+function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById(pageId).classList.add('active');
+
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    const activeNavItem = document.querySelector(`.nav-item[onclick="showPage('${pageId}')"]`);
+    if (activeNavItem) {
+        activeNavItem.classList.add('active');
+    }
+    
+    // Refresh data saat pindah page
+    if (pageId === 'page-list') renderReservationList();
+    if (pageId === 'page-stats') generateStats('today');
+}
+
+function calculateAge() {
+    if (!dobInput.value) return;
+    const birthDate = new Date(dobInput.value);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    ageInput.value = age < 1 ? `${Math.floor((today - birthDate) / (1000 * 60 * 60 * 24 * 30.44))} bulan` : `${age} tahun`;
+}
+
+function handleCategoryChange() {
+    categoryOtherInput.classList.toggle('hidden', categorySelect.value !== 'other');
+}
+
+function handleComplaintToggle(event) {
+    complaintText.classList.toggle('hidden', event.target.value === 'tidak');
+}
+
+function addTreatmentField() {
+    treatmentCounter++;
+    const container = document.getElementById('treatments-container');
+    const newField = document.createElement('div');
+    newField.className = 'mt-2 relative';
+    newField.innerHTML = `
+        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa ${treatmentCounter}</label>
+        <input type="text" name="treatment" class="w-full p-3 pr-10 rounded-lg form-input" placeholder="Nama paket treatment">
+        <button type="button" onclick="this.parentElement.remove()" class="absolute right-2 top-9 text-red-500 hover:text-red-700">&times;</button>
+    `;
+    container.appendChild(newField);
+}
+
+function populateTimeSlots() {
+    const selectedDate = bookingDateInput.value || new Date().toISOString().split('T')[0];
+    const timeSlots = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+    bookingTimeSelect.innerHTML = '';
+    
+    timeSlots.forEach(time => {
+        const reservationsAtTime = reservations.filter(r => r.bookingDate === selectedDate && r.bookingTime === time).length;
+        const availableSlots = 4 - reservationsAtTime;
+        const isFull = availableSlots <= 0;
+
+        const option = document.createElement('option');
+        option.value = time;
+        option.textContent = `${time} - ${isFull ? 'Penuh' : `Sisa ${availableSlots} slot`}`;
+        option.disabled = isFull;
+        bookingTimeSelect.appendChild(option);
+    });
+}
+
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    showLoading();
+
+    const selectedDate = bookingDateInput.value;
+    const selectedTime = bookingTimeSelect.value;
+    
+    const reservationsAtTime = reservations.filter(r => r.bookingDate === selectedDate && r.bookingTime === selectedTime).length;
+    if (reservationsAtTime >= 4) {
+        hideLoading();
+        alert('Maaf, kuota untuk jam ini sudah penuh. Silakan pilih jam lain.');
+        return;
+    }
+
+    const treatments = Array.from(document.querySelectorAll('input[name="treatment"]')).map(input => input.value).filter(Boolean);
+
+    let rme = document.getElementById('rme').value;
+    if (!rme) {
+       rme = `RME-${Date.now()}`;
+       // Add new customer to local list
+       const newCustomer = {
+            rme: rme,
+            bookerName: document.getElementById('booker-name').value,
+            phone: document.getElementById('phone').value,
+            instagram: document.getElementById('instagram').value,
+            address: document.getElementById('address').value,
+            patientName: document.getElementById('patient-name').value,
+            dob: document.getElementById('dob').value,
+            gender: document.querySelector('input[name="gender"]:checked').value
+       };
+       customers.push(newCustomer);
+    }
+    
+    const reservationData = {
+        id: `RES-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        rme: rme,
+        bookerName: document.getElementById('booker-name').value,
+        phone: document.getElementById('phone').value,
+        instagram: document.getElementById('instagram').value,
+        address: document.getElementById('address').value,
+        patientName: document.getElementById('patient-name').value,
+        dob: document.getElementById('dob').value,
+        age: document.getElementById('age').value,
+        gender: document.querySelector('input[name="gender"]:checked').value,
+        category: categorySelect.value === 'other' ? categoryOtherInput.value : categorySelect.value,
+        treatments: treatments.join(', '),
+        hasComplaint: document.querySelector('input[name="complaint_toggle"]:checked').value === 'ya',
+        complaintText: complaintText.value,
+        bookingDate: selectedDate,
+        bookingTime: selectedTime,
+        status: 'Dalam Antrian', // Status: Dalam Antrian, Sedang Treatment, Selesai
+        therapist: ''
+    };
+    
+    // Kirim data ke Google Sheets
+    if (GOOGLE_SCRIPT_URL !== 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=newReservation&data=${encodeURIComponent(JSON.stringify(reservationData))}`
+            });
+             const result = await response.text(); // Baca response sebagai teks
+             console.log('Google Script Response:', result);
+
+        } catch (error) {
+            console.error('Gagal mengirim data ke Google Sheet:', error);
+            // Tetap lanjutkan meski gagal, data tersimpan lokal
+        }
+    } else {
+        console.warn("URL Google Script belum diatur. Data hanya disimpan lokal.");
+    }
+    
+    reservations.push(reservationData);
+    
+    // Reset form dan tampilkan tiket
+    reservationForm.reset();
+    treatmentCounter = 1;
+    document.getElementById('treatments-container').innerHTML = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa 1</label>
+            <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" placeholder="Nama paket treatment" required>
+        </div>
+    `;
+    handleCategoryChange();
+    handleComplaintToggle({ target: { value: 'tidak' } });
+    calculateAge();
+    populateTimeSlots();
+    
+    hideLoading();
+    showTicket(reservationData);
+}
+
+
+// --- FUNGSI PENCARIAN PELANGGAN ---
+function handleCustomerSearch(e) {
+    const query = e.target.value.toLowerCase();
+    if (query.length < 2) {
+        searchResultsContainer.innerHTML = '';
+        return;
+    }
+
+    const results = customers.filter(c => 
+        c.patientName.toLowerCase().includes(query) ||
+        (c.phone && c.phone.includes(query)) ||
+        (c.instagram && c.instagram.toLowerCase().includes(query)) ||
+        (c.rme && c.rme.toLowerCase().includes(query))
+    );
+
+    renderSearchResults(results);
+}
+
+function renderSearchResults(results) {
+    if (results.length === 0) {
+        searchResultsContainer.innerHTML = '<div class="p-3 text-sm text-gray-500">Tidak ditemukan pelanggan.</div>';
+        return;
+    }
+    searchResultsContainer.innerHTML = results.map(customer => `
+        <div class="p-3 hover:bg-pink-50 cursor-pointer border-b border-pink-100" onclick="selectCustomer('${customer.rme}')">
+            <p class="font-semibold text-pink-800">${customer.patientName} (${customer.rme})</p>
+            <p class="text-sm text-gray-500">${customer.phone}</p>
+        </div>
+    `).join('');
+}
+
+function selectCustomer(rme) {
+    const customer = customers.find(c => c.rme === rme);
+    if (customer) {
+        document.getElementById('rme').value = customer.rme;
+        document.getElementById('booker-name').value = customer.bookerName;
+        document.getElementById('phone').value = customer.phone;
+        document.getElementById('instagram').value = customer.instagram;
+        document.getElementById('address').value = customer.address;
+        document.getElementById('patient-name').value = customer.patientName;
+        document.getElementById('dob').value = customer.dob;
+        const genderRadio = document.querySelector(`input[name="gender"][value="${customer.gender}"]`);
+        if (genderRadio) genderRadio.checked = true;
+        
+        calculateAge();
+        searchResultsContainer.innerHTML = '';
+        searchCustomerInput.value = '';
+    }
+}
+
+// --- FUNGSI DAFTAR RESERVASI ---
+function renderReservationList(query = '') {
+    const listContainer = document.getElementById('reservation-list');
+    const lowerCaseQuery = query.toLowerCase();
+
+    const filteredReservations = reservations.filter(r => 
+        r.patientName.toLowerCase().includes(lowerCaseQuery) ||
+        r.phone.includes(lowerCaseQuery) ||
+        r.rme.toLowerCase().includes(lowerCaseQuery) ||
+        r.treatments.toLowerCase().includes(lowerCaseQuery)
+    ).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)); // Urutkan terbaru di atas
+
+    if (filteredReservations.length === 0) {
+        listContainer.innerHTML = `<p class="text-center text-gray-500 mt-10">Tidak ada reservasi ${query ? 'yang cocok.' : 'saat ini.'}</p>`;
+        return;
+    }
+    
+    const statusGroups = {
+        'Sedang Treatment': [],
+        'Dalam Antrian': [],
+        'Selesai': [],
+    };
+
+    filteredReservations.forEach(res => {
+      if(statusGroups[res.status] !== undefined) {
+         statusGroups[res.status].push(res);
+      }
+    });
+
+    listContainer.innerHTML = ``;
+    
+    Object.entries(statusGroups).forEach(([status, items]) => {
+        if (items.length > 0) {
+            const statusColor = getStatusInfo(status).color;
+            listContainer.innerHTML += `<h3 class="font-bold text-lg ${statusColor} border-b-2 ${getStatusInfo(status).borderColor} pb-2 mt-6">${status}</h3>`;
+            items.forEach(res => {
+                listContainer.innerHTML += createReservationCard(res);
+            });
+        }
+    });
+}
+
+function createReservationCard(res) {
+    const statusInfo = getStatusInfo(res.status);
+
+    let actionButton = '';
+    if (res.status === 'Dalam Antrian') {
+        actionButton = `<button onclick="updateStatus('${res.id}', 'Sedang Treatment')" class="w-full text-center py-2 px-4 rounded-lg bg-yellow-500 text-white font-semibold mt-3">Mulai Treatment</button>`;
+    } else if (res.status === 'Sedang Treatment') {
+        actionButton = `<button onclick="showTherapistModal('${res.id}')" class="w-full text-center py-2 px-4 rounded-lg bg-green-500 text-white font-semibold mt-3">Selesaikan</button>`;
+    }
+    
+    // Find past treatments
+    const patientHistory = reservations.filter(r => r.rme === res.rme && r.id !== res.id && r.status === 'Selesai');
+
+    return `
+        <div class="bg-white border-l-4 ${statusInfo.borderColor} rounded-r-lg shadow-md p-4">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-bold text-lg text-pink-800">${res.patientName}</p>
+                    <p class="text-sm text-gray-500">${res.rme}</p>
+                </div>
+                <span class="text-xs font-bold py-1 px-2 rounded-full ${statusInfo.badge}">${res.status}</span>
+            </div>
+            <div class="mt-3 text-sm text-gray-700 space-y-1">
+                <p><i class="fas fa-phone-alt w-4 text-center mr-2 text-pink-400"></i> ${res.phone}</p>
+                <p><i class="fas fa-cut w-4 text-center mr-2 text-pink-400"></i> <span class="font-semibold">${res.treatments}</span></p>
+                <p><i class="fas fa-calendar-alt w-4 text-center mr-2 text-pink-400"></i> ${res.bookingDate} @ ${res.bookingTime}</p>
+                ${res.therapist ? `<p><i class="fas fa-user-md w-4 text-center mr-2 text-pink-400"></i> Terapis: ${res.therapist}</p>` : ''}
+            </div>
+            ${patientHistory.length > 0 ? `
+            <details class="mt-2 text-xs">
+                <summary class="cursor-pointer text-pink-600 font-semibold">Riwayat Treatment (${patientHistory.length})</summary>
+                <ul class="list-disc pl-5 mt-1 text-gray-600">
+                    ${patientHistory.map(h => `<li>${h.bookingDate}: ${h.treatments}</li>`).join('')}
+                </ul>
+            </details>
+            ` : ''}
+            ${actionButton}
+        </div>
+    `;
+}
+
+function getStatusInfo(status) {
+    switch(status) {
+        case 'Dalam Antrian':
+            return { color: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', borderColor: 'border-blue-500' };
+        case 'Sedang Treatment':
+            return { color: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-800', borderColor: 'border-yellow-500' };
+        case 'Selesai':
+            return { color: 'text-green-600', badge: 'bg-green-100 text-green-800', borderColor: 'border-green-500' };
+        default:
+            return { color: 'text-gray-600', badge: 'bg-gray-100 text-gray-800', borderColor: 'border-gray-500' };
+    }
+}
+
+async function updateStatus(id, newStatus, therapistName = '') {
+    const reservation = reservations.find(r => r.id === id);
+    if (reservation) {
+        reservation.status = newStatus;
+        if (therapistName) {
+            reservation.therapist = therapistName;
+        }
+
+        if (GOOGLE_SCRIPT_URL !== 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
+             try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `action=updateStatus&data=${encodeURIComponent(JSON.stringify({id: id, status: newStatus, therapist: therapistName}))}`
+                });
+            } catch (error) {
+                console.error('Gagal update status ke Google Sheet:', error);
+            }
+        }
+        
+        renderReservationList();
+    }
+}
+
+function showTherapistModal(reservationId) {
+    currentlyEditingReservationId = reservationId;
+    document.getElementById('therapist-modal').classList.remove('hidden');
+    document.getElementById('therapist-name').focus();
+}
+
+function hideTherapistModal() {
+    document.getElementById('therapist-modal').classList.add('hidden');
+    document.getElementById('therapist-name').value = '';
+    currentlyEditingReservationId = null;
+}
+
+function completeTreatment() {
+    const therapistName = document.getElementById('therapist-name').value;
+    if (!therapistName) {
+        alert('Nama terapis tidak boleh kosong.');
+        return;
+    }
+    if (currentlyEditingReservationId) {
+        updateStatus(currentlyEditingReservationId, 'Selesai', therapistName);
+    }
+    hideTherapistModal();
+}
+
+
+// --- FUNGSI TIKET ---
+function showTicket(res) {
+    document.getElementById('ticket-rme').textContent = res.rme;
+    document.getElementById('ticket-name').textContent = res.patientName;
+    document.getElementById('ticket-treatment').textContent = res.treatments;
+    document.getElementById('ticket-schedule').textContent = `${res.bookingDate} @ ${res.bookingTime}`;
+    
+    // Logic for queue number - simple daily counter for a specific timeslot
+    const queueTodayAtTime = reservations.filter(r => r.bookingDate === res.bookingDate && r.bookingTime === res.bookingTime).length;
+    document.getElementById('ticket-queue-number').textContent = `${res.bookingTime.split(':')[0]}-${String(queueTodayAtTime).padStart(2, '0')}`;
+    
+    const qrContainer = document.getElementById('ticket-qrcode');
+    qrContainer.innerHTML = '';
+    // Generate QR Code with reservation data
+    const qrData = `RME: ${res.rme}\nNama: ${res.patientName}\nJadwal: ${res.bookingDate} ${res.bookingTime}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrData)}`;
+    const qrImage = document.createElement('img');
+    qrImage.src = qrCodeUrl;
+    qrContainer.appendChild(qrImage);
+
+    document.getElementById('ticket-modal').classList.remove('hidden');
+}
+
+function hideTicketModal() {
+    document.getElementById('ticket-modal').classList.add('hidden');
+}
+
+function downloadTicket() {
+    const ticketElement = document.getElementById('ticket-content');
+    html2canvas(ticketElement, { 
+        backgroundColor: '#ffffff',
+        scale: 2 // Higher scale for better quality
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `antrian-${document.getElementById('ticket-rme').textContent}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+// --- FUNGSI STATISTIK ---
+function generateStats(period) {
+    document.querySelectorAll('.stat-button').forEach(btn => btn.classList.remove('bg-pink-500', 'text-white'));
+    const activeBtn = Array.from(document.querySelectorAll('.stat-button')).find(btn => btn.textContent.toLowerCase().includes(period.replace('week','pekan').replace('month','bulan')));
+    if(activeBtn) activeBtn.classList.add('bg-pink-500', 'text-white');
+
+    const now = new Date();
+    let filteredData;
+
+    if (period === 'today') {
+        const todayStr = now.toISOString().split('T')[0];
+        filteredData = reservations.filter(r => r.bookingDate === todayStr);
+    } else if (period === 'week') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        
+        filteredData = reservations.filter(r => {
+            const resDate = new Date(r.bookingDate);
+            return resDate >= startOfWeek && resDate <= endOfWeek;
+        });
+    } else { // month
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        filteredData = reservations.filter(r => {
+           const resDate = new Date(r.bookingDate);
+           return resDate.getFullYear() === year && resDate.getMonth() === month;
+        });
+    }
+    
+    const totalReservations = filteredData.length;
+    const completed = filteredData.filter(r => r.status === 'Selesai').length;
+    
+    const categoryCounts = filteredData.reduce((acc, r) => {
+        acc[r.category] = (acc[r.category] || 0) + 1;
+        return acc;
+    }, {});
+    const topCategory = Object.entries(categoryCounts).sort((a,b) => b[1] - a[1])[0];
+
+    const statsContent = document.getElementById('stats-content');
+    statsContent.innerHTML = `
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-pink-100 p-4 rounded-xl text-center">
+                <p class="text-sm text-pink-700">Total Reservasi</p>
+                <p class="text-4xl font-bold text-pink-900">${totalReservations}</p>
+            </div>
+            <div class="bg-green-100 p-4 rounded-xl text-center">
+                <p class="text-sm text-green-700">Treatment Selesai</p>
+                <p class="text-4xl font-bold text-green-900">${completed}</p>
+            </div>
+        </div>
+        <div class="bg-purple-100 p-4 rounded-xl">
+            <h4 class="font-bold text-purple-800 mb-2">Kategori Paling Populer</h4>
+            ${topCategory ? `
+            <p class="text-2xl font-semibold text-purple-900">${topCategory[0]}</p>
+            <p class="text-sm text-purple-700">${topCategory[1]} kunjungan</p>
+            ` : '<p class="text-purple-700">Belum ada data.</p>'}
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-pink-200">
+             <h4 class="font-bold text-pink-800 mb-2">Rincian Kategori</h4>
+             ${Object.keys(categoryCounts).length > 0 ?
+                Object.entries(categoryCounts).map(([cat, count]) => `
+                <div class="flex justify-between items-center text-sm py-1">
+                    <span class="text-gray-600">${cat}</span>
+                    <span class="font-semibold text-pink-700">${count}</span>
+                </div>
+                `).join('')
+                : '<p class="text-sm text-gray-500">Belum ada data.</p>'
+            }
+        </div>
+    `;
+}
+
+
+// --- HELPER FUNCTIONS ---
+function showLoading() {
+    document.getElementById('loading-spinner').classList.remove('hidden');
+}
+
+function hideLoading() {
+    document.getElementById('loading-spinner').classList.add('hidden');
+}
+
+</script>
+</body>
+</html>
