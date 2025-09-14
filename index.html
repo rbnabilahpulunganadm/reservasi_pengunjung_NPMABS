@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
         body {
@@ -72,9 +73,35 @@
             background-color: #FCE7F3; /* Pink-100 */
             color: #DB2777; /* Pink-700 */
         }
+        /* Animation for loading button */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+        }
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
         /* Style for the ticket to be generated as image */
         #ticket-content {
             background: url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="p" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M50 0 L100 25 L50 50 L0 25 Z M0 50 L50 75 L0 100 L-50 75 Z M100 50 L150 75 L100 100 L50 75 Z" fill="%23FCE7F3" /></pattern></defs><rect width="100%" height="100%" fill="white"/><rect width="100%" height="100%" fill="url(%23p)"/></svg>'), white;
+        }
+        .medical-input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
         }
     </style>
 </head>
@@ -87,13 +114,67 @@
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500"></div>
     </div>
     
-    <!-- Modal for Therapist Name -->
+    <!-- Modal for Therapist Name and Medical Data -->
     <div id="therapist-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-bold text-pink-800 mb-4">Selesaikan Treatment</h3>
-            <p class="text-gray-600 mb-4">Masukkan nama Terapis yang menangani pasien ini.</p>
-            <input type="text" id="therapist-name" placeholder="Nama Terapis" class="w-full p-3 rounded-lg form-input mb-4">
-            <div class="flex justify-end gap-3">
+            <p class="text-gray-600 mb-4">Masukkan data terapis dan pemeriksaan medis.</p>
+            
+            <div class="mb-4">
+                <label for="therapist-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Terapis *</label>
+                <input type="text" id="therapist-name" placeholder="Nama Terapis" class="w-full p-3 rounded-lg form-input" required>
+            </div>
+            
+            <div class="mb-4">
+                <label for="additional-treatment" class="block text-sm font-medium text-gray-700 mb-1">Treatment Tambahan (jika ada)</label>
+                <input type="text" id="additional-treatment" placeholder="Treatment Tambahan" class="w-full p-3 rounded-lg form-input">
+            </div>
+            
+            <div class="mb-4">
+                <label for="treatment-fee" class="block text-sm font-medium text-gray-700 mb-1">Tarif Treatment (Rp)</label>
+                <input type="number" id="treatment-fee" placeholder="Tarif Treatment" class="w-full p-3 rounded-lg form-input">
+            </div>
+            
+            <h4 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2 mt-6 mb-4">Pemeriksaan Medis</h4>
+            
+            <div class="medical-input-grid mb-4">
+                <div>
+                    <label for="medical-temperature" class="block text-sm font-medium text-gray-700 mb-1">Suhu Tubuh (°C)</label>
+                    <input type="number" id="medical-temperature" step="0.1" min="35" max="42" placeholder="36.5" class="w-full p-3 rounded-lg form-input">
+                </div>
+                <div>
+                    <label for="medical-weight" class="block text-sm font-medium text-gray-700 mb-1">Berat Badan (kg)</label>
+                    <input type="number" id="medical-weight" step="0.1" min="0" placeholder="55.5" class="w-full p-3 rounded-lg form-input">
+                </div>
+            </div>
+            
+            <div class="medical-input-grid mb-4">
+                <div>
+                    <label for="medical-height" class="block text-sm font-medium text-gray-700 mb-1">Tinggi Badan (cm)</label>
+                    <input type="number" id="medical-height" step="0.1" min="0" placeholder="165" class="w-full p-3 rounded-lg form-input">
+                </div>
+                <div>
+                    <label for="medical-bmi" class="block text-sm font-medium text-gray-700 mb-1">BMI</label>
+                    <input type="text" id="medical-bmi" readonly class="w-full p-3 rounded-lg form-input bg-gray-100">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label for="medical-allergy" class="block text-sm font-medium text-gray-700 mb-1">Riwayat Alergi</label>
+                <input type="text" id="medical-allergy" placeholder="Riwayat alergi (jika ada)" class="w-full p-3 rounded-lg form-input">
+            </div>
+            
+            <div class="mb-4">
+                <label for="medical-blood-pressure" class="block text-sm font-medium text-gray-700 mb-1">Tekanan Darah</label>
+                <input type="text" id="medical-blood-pressure" placeholder="120/80 mmHg" class="w-full p-3 rounded-lg form-input">
+            </div>
+            
+            <div class="mb-4">
+                <label for="medical-notes" class="block text-sm font-medium text-gray-700 mb-1">Catatan Medis Lainnya</label>
+                <textarea id="medical-notes" rows="2" placeholder="Catatan medis tambahan" class="w-full p-3 rounded-lg form-textarea"></textarea>
+            </div>
+            
+            <div class="flex justify-end gap-3 mt-6">
                 <button onclick="hideTherapistModal()" class="py-2 px-4 rounded-lg btn-secondary font-semibold">Batal</button>
                 <button onclick="completeTreatment()" class="py-2 px-4 rounded-lg btn-primary font-semibold">Selesaikan</button>
             </div>
@@ -117,11 +198,17 @@
                     <p><strong>Treatment:</strong> <span id="ticket-treatment"></span></p>
                     <p><strong>Jadwal:</strong> <span id="ticket-schedule"></span></p>
                 </div>
+                <div id="ticket-medical-data" class="text-xs mt-2 hidden">
+                    <h5 class="font-semibold text-pink-700">Pemeriksaan Medis:</h5>
+                    <div id="ticket-medical-details"></div>
+                </div>
+                <div id="ticket-medical-history" class="text-xs mt-2"></div>
                 <p class="text-center font-bold text-4xl text-pink-600 font-mplus mt-2" id="ticket-queue-number"></p>
                 <p class="text-center text-xs text-gray-400 mt-2">Terima kasih atas kunjungan Anda!</p>
             </div>
             <div class="flex flex-col gap-3">
-                <button onclick="downloadTicket()" class="w-full py-3 px-4 rounded-lg btn-primary font-semibold flex items-center justify-center gap-2"><i class="fas fa-download"></i> Unduh Nomor Antrian</button>
+                <button onclick="downloadTicket()" class="w-full py-3 px-4 rounded-lg btn-primary font-semibold flex items-center justify-center gap-2"><i class="fas fa-download"></i> Unduh Nomor Antrian (Gambar)</button>
+                <button onclick="printTicketPDF()" class="w-full py-3 px-4 rounded-lg bg-blue-500 text-white font-semibold flex items-center justify-center gap-2"><i class="fas fa-file-pdf"></i> Cetak PDF</button>
                 <button onclick="hideTicketModal()" class="w-full py-3 px-4 rounded-lg btn-secondary font-semibold">Tutup</button>
             </div>
         </div>
@@ -134,7 +221,6 @@
             <header class="text-center mb-6">
                 <h1 class="text-3xl font-bold text-pink-800 font-mplus">Reservasi Treatment</h1>
                 <p class="text-gray-500">Isi data untuk jadwal treatment Anda.</p>
-                 
             </header>
             
             <div class="mb-4">
@@ -178,7 +264,7 @@
                         <input type="date" id="dob" class="w-full p-3 rounded-lg form-input" required>
                     </div>
                     <div>
-                        <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Usia</label>
+                        <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Usia (Tahun, Bulan, Minggu, Hari)</label>
                         <input type="text" id="age" class="w-full p-3 rounded-lg form-input bg-pink-50" readonly>
                     </div>
                 </div>
@@ -247,8 +333,25 @@
         <div id="page-list" class="page">
             <header class="mb-6">
                 <h1 class="text-3xl font-bold text-pink-800 font-mplus">Daftar Reservasi</h1>
-                <div class="relative mt-4">
-                    <input type="text" id="search-reservations" placeholder="Cari di daftar reservasi..." class="w-full p-3 pl-10 rounded-lg form-input">
+                
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <select id="filter-status" class="p-2 rounded-lg form-select flex-1 min-w-[120px]" onchange="renderReservationList()">
+                        <option value="all">Semua Status</option>
+                        <option value="Dalam Antrian">Dalam Antrian</option>
+                        <option value="Sedang Treatment">Sedang Treatment</option>
+                        <option value="Selesai">Selesai</option>
+                    </select>
+                    
+                    <select id="sort-by" class="p-2 rounded-lg form-select flex-1 min-w-[120px]" onchange="renderReservationList()">
+                        <option value="timestamp-desc">Terbaru</option>
+                        <option value="timestamp-asc">Terlama</option>
+                        <option value="name-asc">Nama A-Z</option>
+                        <option value="name-desc">Nama Z-A</option>
+                    </select>
+                </div>
+                
+                <div class="relative">
+                    <input type="text" id="search-reservations" placeholder="Cari di daftar reservasi..." class="w-full p-3 pl-10 rounded-lg form-input" oninput="renderReservationList()">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 </div>
             </header>
@@ -273,6 +376,12 @@
             <div id="stats-content" class="space-y-4">
                 <!-- Statistik akan ditampilkan di sini -->
             </div>
+            
+            <div class="mt-6">
+                <button onclick="exportToPDF()" class="w-full py-3 px-4 rounded-lg btn-primary font-semibold flex items-center justify-center gap-2">
+                    <i class="fas fa-file-pdf"></i> Export Laporan ke PDF
+                </button>
+            </div>
         </div>
         
         <!-- PAGE 4: PANDUAN -->
@@ -288,11 +397,11 @@
                 </div>
                  <div>
                     <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-list-alt"></i>Melihat Daftar Reservasi</h3>
-                    <p class="mt-1 ml-6">Buka tab 'Daftar'. Di sini Anda bisa melihat semua reservasi yang masuk. Gunakan bar pencarian untuk menemukan reservasi spesifik.</p>
+                    <p class="mt-1 ml-6">Buka tab 'Daftar'. Di sini Anda bisa melihat semua reservasi yang masuk. Gunakan filter dan pencarian untuk menemukan reservasi spesifik.</p>
                 </div>
                  <div>
                     <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-tasks"></i>Mengubah Status Treatment</h3>
-                    <p class="mt-1 ml-6">Di tab 'Daftar', setiap kartu reservasi memiliki tombol aksi. Klik 'Mulai Treatment' saat pasien mulai dilayani. Setelah selesai, klik 'Selesaikan', isi nama terapis, dan status akan berubah menjadi 'Selesai'.</p>
+                    <p class="mt-1 ml-6">Di tab 'Daftar', setiap kartu reservasi memiliki tombol aksi. Klik 'Mulai Treatment' saat pasien mulai dilayani. Setelah selesai, klik 'Selesaikan', isi data terapis dan pemeriksaan medis, dan status akan berubah menjadi 'Selesai'.</p>
                 </div>
                  <div>
                     <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-chart-pie"></i>Melihat Laporan</h3>
@@ -300,7 +409,7 @@
                 </div>
                  <div>
                     <h3 class="font-bold text-lg text-pink-600 flex items-center gap-2"><i class="fas fa-download"></i>Mencetak Nomor Antrian</h3>
-                    <p class="mt-1 ml-6">Setelah reservasi berhasil dibuat, akan muncul pop-up nomor antrian. Klik tombol 'Unduh Nomor Antrian' untuk menyimpannya sebagai gambar/foto di perangkat Anda.</p>
+                    <p class="mt-1 ml-6">Setelah reservasi berhasil dibuat, akan muncul pop-up nomor antrian. Klik tombol 'Unduh Nomor Antrian' untuk menyimpannya sebagai gambar/foto di perangkat Anda, atau 'Cetak PDF' untuk format dokumen.</p>
                 </div>
             </div>
         </div>
@@ -327,17 +436,17 @@
     </nav>
 </div>
 
-
 <script>
 // --- KONFIGURASI ---
 // Ganti dengan URL Web App Google Apps Script Anda setelah dideploy
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzOLXMSDfq4ZK-CUvwXV5oOzw46DZTPUMXMyJgVw6N4alICh77_TYV7i3RJgXrOK0LPJg/exec'; 
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQ6kgtbruDimhbd0x8Sp3Dsn6Fu0D7g6lRUDTCX3vQwQ9D50twK3Jd9W8NYndkZmRBzg/exec'; 
 
 // --- STATE APLIKASI ---
 let reservations = [];
 let customers = []; // Untuk menyimpan data pelanggan unik
 let treatmentCounter = 1;
 let currentlyEditingReservationId = null;
+let loadingButtons = {}; // Untuk melacak tombol yang sedang loading
 
 // --- DOM ELEMENTS ---
 const dobInput = document.getElementById('dob');
@@ -352,7 +461,17 @@ const bookingTimeSelect = document.getElementById('booking-time');
 const searchCustomerInput = document.getElementById('search-customer');
 const searchResultsContainer = document.getElementById('search-results');
 const searchReservationsInput = document.getElementById('search-reservations');
+const filterStatusSelect = document.getElementById('filter-status');
+const sortBySelect = document.getElementById('sort-by');
 
+// Elemen input medis
+const medicalTemperature = document.getElementById('medical-temperature');
+const medicalWeight = document.getElementById('medical-weight');
+const medicalHeight = document.getElementById('medical-height');
+const medicalBmi = document.getElementById('medical-bmi');
+const medicalAllergy = document.getElementById('medical-allergy');
+const medicalBloodPressure = document.getElementById('medical-blood-pressure');
+const medicalNotes = document.getElementById('medical-notes');
 
 // --- FUNGSI UTAMA ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -373,10 +492,13 @@ document.addEventListener('DOMContentLoaded', () => {
     bookingDateInput.addEventListener('change', populateTimeSlots);
     bookingTimeSelect.addEventListener('change', populateTimeSlots);
     searchCustomerInput.addEventListener('input', handleCustomerSearch);
-    searchReservationsInput.addEventListener('input', () => renderReservationList(searchReservationsInput.value));
+    
+    // Event listeners untuk kalkulasi BMI otomatis
+    medicalWeight.addEventListener('input', calculateBMI);
+    medicalHeight.addEventListener('input', calculateBMI);
 });
 
-// FUNGSI BARU UNTUK MENGAMBIL DATA DARI GOOGLE SHEET
+// FUNGSI UNTUK MENGAMBIL DATA DARI GOOGLE SHEET
 async function fetchInitialData() {
     showLoading();
     if (GOOGLE_SCRIPT_URL === 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
@@ -415,7 +537,17 @@ async function fetchInitialData() {
                 bookingDate: new Date(r['Tgl Booking']).toISOString().split('T')[0],
                 bookingTime: r['Jam Booking'],
                 status: r.Status,
-                therapist: r.Terapis
+                therapist: r.Terapis,
+                additionalTreatment: r.TreatmentTambahan || '',
+                fee: r.Tarif || '',
+                // Data medis baru
+                temperature: r.Suhu || '',
+                weight: r.Berat || '',
+                height: r.Tinggi || '',
+                bmi: r.BMI || '',
+                allergy: r.Alergi || '',
+                bloodPressure: r['Tekanan Darah'] || '',
+                medicalNotes: r['Catatan Medis'] || ''
             }));
             
             // Konversi nama properti dari header sheet ke camelCase yang dipakai di JS
@@ -443,7 +575,6 @@ async function fetchInitialData() {
     }
 }
 
-
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
@@ -463,12 +594,45 @@ function calculateAge() {
     if (!dobInput.value) return;
     const birthDate = new Date(dobInput.value);
     const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
+    
+    // Hitung selisih tahun, bulan, dan hari
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+    
+    // Jika hari negatif, kurangi satu bulan dan tambahkan hari dari bulan sebelumnya
+    if (days < 0) {
+        months--;
+        const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += lastMonth.getDate();
     }
-    ageInput.value = age < 1 ? `${Math.floor((today - birthDate) / (1000 * 60 * 60 * 24 * 30.44))} bulan` : `${age} tahun`;
+    
+    // Jika bulan negatif, kurangi satu tahun dan tambahkan 12 bulan
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+    
+    // Hitung total hari untuk konversi ke minggu
+    const totalDays = Math.floor((today - birthDate) / (1000 * 60 * 60 * 24));
+    const weeks = Math.floor(totalDays / 7);
+    const remainingDays = totalDays % 7;
+    
+    let ageString = '';
+    if (years > 0) {
+        ageString += `${years} tahun `;
+    }
+    if (months > 0) {
+        ageString += `${months} bulan `;
+    }
+    if (weeks > 0 && years < 1) {
+        ageString += `${weeks} minggu `;
+    }
+    if (remainingDays > 0 && years < 1 && months < 1) {
+        ageString += `${remainingDays} hari`;
+    }
+    
+    ageInput.value = ageString || '0 hari';
 }
 
 function handleCategoryChange() {
@@ -508,6 +672,19 @@ function populateTimeSlots() {
         option.disabled = isFull;
         bookingTimeSelect.appendChild(option);
     });
+}
+
+// Hitung BMI secara otomatis
+function calculateBMI() {
+    const weight = parseFloat(medicalWeight.value);
+    const height = parseFloat(medicalHeight.value) / 100; // Convert cm to m
+    
+    if (weight && height) {
+        const bmi = weight / (height * height);
+        medicalBmi.value = bmi.toFixed(1);
+    } else {
+        medicalBmi.value = '';
+    }
 }
 
 async function handleFormSubmit(event) {
@@ -562,7 +739,17 @@ async function handleFormSubmit(event) {
         bookingDate: selectedDate,
         bookingTime: selectedTime,
         status: 'Dalam Antrian', // Status: Dalam Antrian, Sedang Treatment, Selesai
-        therapist: ''
+        therapist: '',
+        additionalTreatment: '',
+        fee: '',
+        // Data medis baru
+        temperature: '',
+        weight: '',
+        height: '',
+        bmi: '',
+        allergy: '',
+        bloodPressure: '',
+        medicalNotes: ''
     };
     
     // Kirim data ke Google Sheets
@@ -658,19 +845,38 @@ function selectCustomer(rme) {
 }
 
 // --- FUNGSI DAFTAR RESERVASI ---
-function renderReservationList(query = '') {
+function renderReservationList() {
     const listContainer = document.getElementById('reservation-list');
-    const lowerCaseQuery = query.toLowerCase();
+    const query = searchReservationsInput.value.toLowerCase();
+    const statusFilter = filterStatusSelect.value;
+    const sortBy = sortBySelect.value;
 
-    const filteredReservations = reservations.filter(r => 
-        r.patientName.toLowerCase().includes(lowerCaseQuery) ||
-        r.phone.includes(lowerCaseQuery) ||
-        r.rme.toLowerCase().includes(lowerCaseQuery) ||
-        r.treatments.toLowerCase().includes(lowerCaseQuery)
-    ).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)); // Urutkan terbaru di atas
+    let filteredReservations = reservations.filter(r => 
+        (statusFilter === 'all' || r.status === statusFilter) &&
+        (r.patientName.toLowerCase().includes(query) ||
+        r.phone.includes(query) ||
+        r.rme.toLowerCase().includes(query) ||
+        r.treatments.toLowerCase().includes(query))
+    );
+
+    // Sorting
+    switch(sortBy) {
+        case 'timestamp-desc':
+            filteredReservations.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            break;
+        case 'timestamp-asc':
+            filteredReservations.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+            break;
+        case 'name-asc':
+            filteredReservations.sort((a,b) => a.patientName.localeCompare(b.patientName));
+            break;
+        case 'name-desc':
+            filteredReservations.sort((a,b) => b.patientName.localeCompare(a.patientName));
+            break;
+    }
 
     if (filteredReservations.length === 0) {
-        listContainer.innerHTML = `<p class="text-center text-gray-500 mt-10">Tidak ada reservasi ${query ? 'yang cocok.' : 'saat ini.'}</p>`;
+        listContainer.innerHTML = `<p class="text-center text-gray-500 mt-10">Tidak ada reservasi ${query || statusFilter !== 'all' ? 'yang cocok.' : 'saat ini.'}</p>`;
         return;
     }
     
@@ -691,7 +897,7 @@ function renderReservationList(query = '') {
     Object.entries(statusGroups).forEach(([status, items]) => {
         if (items.length > 0) {
             const statusColor = getStatusInfo(status).color;
-            listContainer.innerHTML += `<h3 class="font-bold text-lg ${statusColor} border-b-2 ${getStatusInfo(status).borderColor} pb-2 mt-6">${status}</h3>`;
+            listContainer.innerHTML += `<h3 class="font-bold text-lg ${statusColor} border-b-2 ${getStatusInfo(status).borderColor} pb-2 mt-6">${status} (${items.length})</h3>`;
             items.forEach(res => {
                 listContainer.innerHTML += createReservationCard(res);
             });
@@ -704,14 +910,14 @@ function createReservationCard(res) {
 
     let actionButton = '';
     if (res.status === 'Dalam Antrian') {
-        actionButton = `<button onclick="updateStatus('${res.id}', 'Sedang Treatment')" class="w-full text-center py-2 px-4 rounded-lg bg-yellow-500 text-white font-semibold mt-3">Mulai Treatment</button>`;
+        actionButton = `<button id="btn-${res.id}" onclick="updateStatus('${res.id}', 'Sedang Treatment')" class="w-full text-center py-2 px-4 rounded-lg bg-yellow-500 text-white font-semibold mt-3">Mulai Treatment</button>`;
     } else if (res.status === 'Sedang Treatment') {
         actionButton = `<button onclick="showTherapistModal('${res.id}')" class="w-full text-center py-2 px-4 rounded-lg bg-green-500 text-white font-semibold mt-3">Selesaikan</button>`;
     }
     
     // Find past treatments
     const patientHistory = reservations.filter(r => r.rme === res.rme && r.id !== res.id && r.status === 'Selesai');
-
+    
     return `
         <div class="bg-white border-l-4 ${statusInfo.borderColor} rounded-r-lg shadow-md p-4">
             <div class="flex justify-between items-start">
@@ -724,14 +930,16 @@ function createReservationCard(res) {
             <div class="mt-3 text-sm text-gray-700 space-y-1">
                 <p><i class="fas fa-phone-alt w-4 text-center mr-2 text-pink-400"></i> ${res.phone}</p>
                 <p><i class="fas fa-cut w-4 text-center mr-2 text-pink-400"></i> <span class="font-semibold">${res.treatments}</span></p>
-                <p><i class="fas fa-calendar-alt w-4 text-center mr-2 text-pink-400"></i> ${res.bookingDate} @ ${res.bookingTime}</p>
+                <p><i class="fas fa-calendar-alt w-4 text-center mr-2 text-pink-400"></i> ${formatDate(res.bookingDate)} @ ${res.bookingTime}</p>
                 ${res.therapist ? `<p><i class="fas fa-user-md w-4 text-center mr-2 text-pink-400"></i> Terapis: ${res.therapist}</p>` : ''}
+                ${res.additionalTreatment ? `<p><i class="fas fa-plus-circle w-4 text-center mr-2 text-pink-400"></i> Treatment Tambahan: ${res.additionalTreatment}</p>` : ''}
+                ${res.fee ? `<p><i class="fas fa-money-bill-wave w-4 text-center mr-2 text-pink-400"></i> Tarif: Rp ${Number(res.fee).toLocaleString('id-ID')}</p>` : ''}
             </div>
             ${patientHistory.length > 0 ? `
             <details class="mt-2 text-xs">
                 <summary class="cursor-pointer text-pink-600 font-semibold">Riwayat Treatment (${patientHistory.length})</summary>
                 <ul class="list-disc pl-5 mt-1 text-gray-600">
-                    ${patientHistory.map(h => `<li>${h.bookingDate}: ${h.treatments}</li>`).join('')}
+                    ${patientHistory.map(h => `<li>${formatDate(h.bookingDate)}: ${h.treatments}</li>`).join('')}
                 </ul>
             </details>
             ` : ''}
@@ -753,24 +961,66 @@ function getStatusInfo(status) {
     }
 }
 
-async function updateStatus(id, newStatus, therapistName = '') {
+async function updateStatus(id, newStatus, therapistName = '', additionalTreatment = '', fee = '', temperature = '', weight = '', height = '', bmi = '', allergy = '', bloodPressure = '', medicalNotes = '') {
+    // Tampilkan animasi loading pada tombol
+    const button = document.getElementById(`btn-${id}`);
+    if (button) {
+        button.classList.add('btn-loading');
+        loadingButtons[id] = true;
+    }
+
     const reservation = reservations.find(r => r.id === id);
     if (reservation) {
         reservation.status = newStatus;
         if (therapistName) {
             reservation.therapist = therapistName;
         }
+        if (additionalTreatment) {
+            reservation.additionalTreatment = additionalTreatment;
+        }
+        if (fee) {
+            reservation.fee = fee;
+        }
+        // Update data medis
+        if (temperature) reservation.temperature = temperature;
+        if (weight) reservation.weight = weight;
+        if (height) reservation.height = height;
+        if (bmi) reservation.bmi = bmi;
+        if (allergy) reservation.allergy = allergy;
+        if (bloodPressure) reservation.bloodPressure = bloodPressure;
+        if (medicalNotes) reservation.medicalNotes = medicalNotes;
 
         if (GOOGLE_SCRIPT_URL !== 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
              try {
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                    body: `action=updateStatus&data=${encodeURIComponent(JSON.stringify({id: id, status: newStatus, therapist: therapistName}))}`
+                    body: `action=updateStatus&data=${encodeURIComponent(JSON.stringify({
+                        id: id, 
+                        status: newStatus, 
+                        therapist: therapistName,
+                        additionalTreatment: additionalTreatment,
+                        fee: fee,
+                        temperature: temperature,
+                        weight: weight,
+                        height: height,
+                        bmi: bmi,
+                        allergy: allergy,
+                        bloodPressure: bloodPressure,
+                        medicalNotes: medicalNotes
+                    }))}`
                 });
             } catch (error) {
                 console.error('Gagal update status ke Google Sheet:', error);
             }
+        }
+        
+        // Hapus animasi loading setelah selesai
+        if (button) {
+            setTimeout(() => {
+                button.classList.remove('btn-loading');
+                delete loadingButtons[id];
+            }, 1000);
         }
         
         renderReservationList();
@@ -779,6 +1029,19 @@ async function updateStatus(id, newStatus, therapistName = '') {
 
 function showTherapistModal(reservationId) {
     currentlyEditingReservationId = reservationId;
+    
+    // Isi data medis jika sudah ada
+    const reservation = reservations.find(r => r.id === reservationId);
+    if (reservation) {
+        if (reservation.temperature) medicalTemperature.value = reservation.temperature;
+        if (reservation.weight) medicalWeight.value = reservation.weight;
+        if (reservation.height) medicalHeight.value = reservation.height;
+        if (reservation.bmi) medicalBmi.value = reservation.bmi;
+        if (reservation.allergy) medicalAllergy.value = reservation.allergy;
+        if (reservation.bloodPressure) medicalBloodPressure.value = reservation.bloodPressure;
+        if (reservation.medicalNotes) medicalNotes.value = reservation.medicalNotes;
+    }
+    
     document.getElementById('therapist-modal').classList.remove('hidden');
     document.getElementById('therapist-name').focus();
 }
@@ -786,37 +1049,99 @@ function showTherapistModal(reservationId) {
 function hideTherapistModal() {
     document.getElementById('therapist-modal').classList.add('hidden');
     document.getElementById('therapist-name').value = '';
+    document.getElementById('additional-treatment').value = '';
+    document.getElementById('treatment-fee').value = '';
+    // Reset form medis
+    medicalTemperature.value = '';
+    medicalWeight.value = '';
+    medicalHeight.value = '';
+    medicalBmi.value = '';
+    medicalAllergy.value = '';
+    medicalBloodPressure.value = '';
+    medicalNotes.value = '';
     currentlyEditingReservationId = null;
 }
 
 function completeTreatment() {
     const therapistName = document.getElementById('therapist-name').value;
+    const additionalTreatment = document.getElementById('additional-treatment').value;
+    const treatmentFee = document.getElementById('treatment-fee').value;
+    const temperature = medicalTemperature.value;
+    const weight = medicalWeight.value;
+    const height = medicalHeight.value;
+    const bmi = medicalBmi.value;
+    const allergy = medicalAllergy.value;
+    const bloodPressure = medicalBloodPressure.value;
+    const notes = medicalNotes.value;
+
     if (!therapistName) {
         alert('Nama terapis tidak boleh kosong.');
         return;
     }
     if (currentlyEditingReservationId) {
-        updateStatus(currentlyEditingReservationId, 'Selesai', therapistName);
+        updateStatus(currentlyEditingReservationId, 'Selesai', therapistName, additionalTreatment, treatmentFee, temperature, weight, height, bmi, allergy, bloodPressure, notes);
     }
     hideTherapistModal();
 }
-
 
 // --- FUNGSI TIKET ---
 function showTicket(res) {
     document.getElementById('ticket-rme').textContent = res.rme;
     document.getElementById('ticket-name').textContent = res.patientName;
     document.getElementById('ticket-treatment').textContent = res.treatments;
-    document.getElementById('ticket-schedule').textContent = `${res.bookingDate} @ ${res.bookingTime}`;
+    document.getElementById('ticket-schedule').textContent = `${formatDate(res.bookingDate)} @ ${res.bookingTime}`;
     
-    // Logic for queue number - simple daily counter for a specific timeslot
-    const queueTodayAtTime = reservations.filter(r => r.bookingDate === res.bookingDate && r.bookingTime === res.bookingTime).length;
-    document.getElementById('ticket-queue-number').textContent = `${res.bookingTime.split(':')[0]}-${String(queueTodayAtTime).padStart(2, '0')}`;
+    // Hitung nomor antrian yang benar berdasarkan jam dan urutan reservasi
+    const reservationsTodayAtTime = reservations.filter(r => 
+        r.bookingDate === res.bookingDate && 
+        r.bookingTime === res.bookingTime &&
+        new Date(r.timestamp) <= new Date(res.timestamp)
+    );
+    
+    document.getElementById('ticket-queue-number').textContent = `${res.bookingTime.split(':')[0]}-${String(reservationsTodayAtTime.length).padStart(2, '0')}`;
+    
+    // Tampilkan data medis jika ada
+    const medicalContainer = document.getElementById('ticket-medical-data');
+    const medicalDetails = document.getElementById('ticket-medical-details');
+    medicalDetails.innerHTML = '';
+
+    if (res.temperature || res.weight || res.height || res.allergy || res.bloodPressure || res.medicalNotes) {
+        medicalContainer.classList.remove('hidden');
+        let medicalHtml = '';
+        if (res.temperature) medicalHtml += `<p><strong>Suhu:</strong> ${res.temperature} °C</p>`;
+        if (res.weight) medicalHtml += `<p><strong>Berat:</strong> ${res.weight} kg</p>`;
+        if (res.height) medicalHtml += `<p><strong>Tinggi:</strong> ${res.height} cm</p>`;
+        if (res.bmi) medicalHtml += `<p><strong>BMI:</strong> ${res.bmi}</p>`;
+        if (res.allergy) medicalHtml += `<p><strong>Alergi:</strong> ${res.allergy}</p>`;
+        if (res.bloodPressure) medicalHtml += `<p><strong>Tekanan Darah:</strong> ${res.bloodPressure}</p>`;
+        if (res.medicalNotes) medicalHtml += `<p><strong>Catatan:</strong> ${res.medicalNotes}</p>`;
+        medicalDetails.innerHTML = medicalHtml;
+    } else {
+        medicalContainer.classList.add('hidden');
+    }
+    
+    // Ambil riwayat treatment
+    const patientHistory = reservations.filter(r => r.rme === res.rme && r.id !== res.id && r.status === 'Selesai');
+    
+    // Tampilkan riwayat di tiket
+    const historyContainer = document.getElementById('ticket-medical-history');
+    historyContainer.innerHTML = '';
+    
+    if (patientHistory.length > 0) {
+        let historyHtml = '<div class="border-t border-pink-200 pt-2 mt-2 text-xs">';
+        historyHtml += '<p class="font-semibold text-pink-700">Riwayat Treatment:</p>';
+        historyHtml += '<ul class="list-disc pl-5 mt-1 text-gray-600">';
+        patientHistory.slice(-3).forEach(h => {
+            historyHtml += `<li>${formatDate(h.bookingDate)}: ${h.treatments}</li>`;
+        });
+        historyHtml += '</ul></div>';
+        historyContainer.innerHTML = historyHtml;
+    }
     
     const qrContainer = document.getElementById('ticket-qrcode');
     qrContainer.innerHTML = '';
-    // Generate QR Code with reservation data
-    const qrData = `RME: ${res.rme}\nNama: ${res.patientName}\nJadwal: ${res.bookingDate} ${res.bookingTime}`;
+    // Generate QR Code dengan data reservasi
+    const qrData = `RME: ${res.rme}\nNama: ${res.patientName}\nTreatment: ${res.treatments}\nJadwal: ${res.bookingDate} ${res.bookingTime}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrData)}`;
     const qrImage = document.createElement('img');
     qrImage.src = qrCodeUrl;
@@ -842,8 +1167,33 @@ function downloadTicket() {
     });
 }
 
+function printTicketPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const ticketElement = document.getElementById('ticket-content');
+    
+    html2canvas(ticketElement, { 
+        backgroundColor: '#ffffff',
+        scale: 2
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = doc.getImageProperties(imgData);
+        const pdfWidth = doc.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+        
+        doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        doc.save(`antrian-${document.getElementById('ticket-rme').textContent}.pdf`);
+    });
+}
+
 // --- FUNGSI STATISTIK ---
-function generateStats(period) {
+async function generateStats(period) {
+    showLoading();
+    
+    // Pastikan data selalu fresh dari server
+    await fetchInitialData();
+    
     document.querySelectorAll('.stat-button').forEach(btn => btn.classList.remove('bg-pink-500', 'text-white'));
     const activeBtn = Array.from(document.querySelectorAll('.stat-button')).find(btn => btn.textContent.toLowerCase().includes(period.replace('week','pekan').replace('month','bulan')));
     if(activeBtn) activeBtn.classList.add('bg-pink-500', 'text-white');
@@ -875,6 +1225,32 @@ function generateStats(period) {
     
     const totalReservations = filteredData.length;
     const completed = filteredData.filter(r => r.status === 'Selesai').length;
+    const totalRevenue = filteredData.filter(r => r.status === 'Selesai' && r.fee)
+        .reduce((sum, r) => sum + (Number(r.fee) || 0), 0);
+    
+    // Hitung terapis favorit
+    const therapistCounts = filteredData
+        .filter(r => r.therapist && r.status === 'Selesai')
+        .reduce((acc, r) => {
+            acc[r.therapist] = (acc[r.therapist] || 0) + 1;
+            return acc;
+        }, {});
+    const topTherapist = Object.entries(therapistCounts).sort((a,b) => b[1] - a[1])[0];
+    
+    // Hitung hari dan jam populer
+    const dayCounts = filteredData.reduce((acc, r) => {
+        const day = new Date(r.bookingDate).getDay();
+        const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        acc[dayNames[day]] = (acc[dayNames[day]] || 0) + 1;
+        return acc;
+    }, {});
+    const topDay = Object.entries(dayCounts).sort((a,b) => b[1] - a[1])[0];
+    
+    const timeCounts = filteredData.reduce((acc, r) => {
+        acc[r.bookingTime] = (acc[r.bookingTime] || 0) + 1;
+        return acc;
+    }, {});
+    const topTime = Object.entries(timeCounts).sort((a,b) => b[1] - a[1])[0];
     
     const categoryCounts = filteredData.reduce((acc, r) => {
         acc[r.category] = (acc[r.category] || 0) + 1;
@@ -894,13 +1270,31 @@ function generateStats(period) {
                 <p class="text-4xl font-bold text-green-900">${completed}</p>
             </div>
         </div>
-        <div class="bg-purple-100 p-4 rounded-xl">
-            <h4 class="font-bold text-purple-800 mb-2">Kategori Paling Populer</h4>
-            ${topCategory ? `
-            <p class="text-2xl font-semibold text-purple-900">${topCategory[0]}</p>
-            <p class="text-sm text-purple-700">${topCategory[1]} kunjungan</p>
-            ` : '<p class="text-purple-700">Belum ada data.</p>'}
+        <div class="bg-blue-100 p-4 rounded-xl text-center">
+            <p class="text-sm text-blue-700">Total Pendapatan</p>
+            <p class="text-3xl font-bold text-blue-900">Rp ${totalRevenue.toLocaleString('id-ID')}</p>
         </div>
+        ${topTherapist ? `
+        <div class="bg-purple-100 p-4 rounded-xl">
+            <h4 class="font-bold text-purple-800 mb-2">Terapis Favorit</h4>
+            <p class="text-2xl font-semibold text-purple-900">${topTherapist[0]}</p>
+            <p class="text-sm text-purple-700">${topTherapist[1]} treatment</p>
+        </div>
+        ` : ''}
+        ${topDay ? `
+        <div class="bg-yellow-100 p-4 rounded-xl">
+            <h4 class="font-bold text-yellow-800 mb-2">Hari Paling Ramai</h4>
+            <p class="text-2xl font-semibold text-yellow-900">${topDay[0]}</p>
+            <p class="text-sm text-yellow-700">${topDay[1]} kunjungan</p>
+        </div>
+        ` : ''}
+        ${topTime ? `
+        <div class="bg-red-100 p-4 rounded-xl">
+            <h4 class="font-bold text-red-800 mb-2">Jam Paling Populer</h4>
+            <p class="text-2xl font-semibold text-red-900">${topTime[0]}</p>
+            <p class="text-sm text-red-700">${topTime[1]} kunjungan</p>
+        </div>
+        ` : ''}
         <div class="bg-white p-4 rounded-xl border border-pink-200">
              <h4 class="font-bold text-pink-800 mb-2">Rincian Kategori</h4>
              ${Object.keys(categoryCounts).length > 0 ?
@@ -914,10 +1308,76 @@ function generateStats(period) {
             }
         </div>
     `;
+    
+    hideLoading();
 }
 
+// --- FUNGSI EKSPOR PDF ---
+function exportToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Judul
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Laporan Statistik Klinik', 105, 15, { align: 'center' });
+    
+    // Periode
+    const activeBtn = document.querySelector('.stat-button.bg-pink-500');
+    const period = activeBtn ? activeBtn.textContent : 'Hari Ini';
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Periode: ${period}`, 105, 22, { align: 'center' });
+    
+    // Tanggal ekspor
+    const exportDate = new Date().toLocaleDateString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    doc.text(`Dibuat pada: ${exportDate}`, 105, 28, { align: 'center' });
+    
+    // Data statistik
+    let yPosition = 40;
+    
+    // Ambil data dari tampilan
+    const statsElements = document.querySelectorAll('#stats-content > div');
+    statsElements.forEach((element, index) => {
+        if (yPosition > 250) {
+            doc.addPage();
+            yPosition = 20;
+        }
+        
+        const title = element.querySelector('h4')?.textContent || 
+                     element.querySelector('.text-sm')?.textContent || 
+                     `Statistik ${index + 1}`;
+        const value = element.querySelector('.text-2xl, .text-3xl, .text-4xl')?.textContent || 
+                     element.querySelector('.text-sm:not(.text-pink-700)')?.textContent || '';
+        
+        doc.setFontSize(14);
+        doc.setTextColor(40, 40, 40);
+        doc.text(title, 14, yPosition);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(80, 80, 80);
+        doc.text(value, 14, yPosition + 7);
+        
+        yPosition += 15;
+    });
+    
+    // Simpan PDF
+    doc.save(`Laporan-Klinik-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
 
-// --- HELPER FUNCTIONS ---
+// --- FUNGSI BANTU ---
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
 function showLoading() {
     document.getElementById('loading-spinner').classList.remove('hidden');
 }
