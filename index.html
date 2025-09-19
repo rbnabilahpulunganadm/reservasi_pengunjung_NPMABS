@@ -475,11 +475,12 @@ const medicalNotes = document.getElementById('medical-notes');
 
 // --- FUNGSI UTAMA ---
 document.addEventListener('DOMContentLoaded', () => {
+    fetchInitialData(); // PANGGIL FUNGSI UNTUK MENGAMBIL DATA AWAL
+
     // Inisialisasi: set tanggal minimum dan isi opsi jam
     const today = new Date().toISOString().split('T')[0];
     dobInput.max = today;
     bookingDateInput.min = today;
-    bookingDateInput.value = today;
     
     showPage('page-form');
 
@@ -489,15 +490,12 @@ document.addEventListener('DOMContentLoaded', () => {
     complaintToggle.forEach(radio => radio.addEventListener('change', handleComplaintToggle));
     reservationForm.addEventListener('submit', handleFormSubmit);
     bookingDateInput.addEventListener('change', populateTimeSlots);
+    bookingTimeSelect.addEventListener('change', populateTimeSlots);
     searchCustomerInput.addEventListener('input', handleCustomerSearch);
     
     // Event listeners untuk kalkulasi BMI otomatis
     medicalWeight.addEventListener('input', calculateBMI);
     medicalHeight.addEventListener('input', calculateBMI);
-    
-    // Panggil fungsi untuk mengambil data dan mengisi timeslots
-    fetchInitialData();
-    populateTimeSlots();
 });
 
 // FUNGSI UNTUK MENGAMBIL DATA DARI GOOGLE SHEET
@@ -578,446 +576,110 @@ async function fetchInitialData() {
 }
 
 function showPage(pageId) {
-    // Sembunyikan semua halaman
-    document.querySelectorAll('.page').forEach(page => {
-        page.classList.remove('active');
-    });
-    
-    // Tampilkan halaman yang dipilih
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
-    
-    // Update navigasi aktif
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    
-    // Tentukan tombol navigasi mana yang aktif
-    let navButton;
-    switch(pageId) {
-        case 'page-form':
-            navButton = document.querySelector('.nav-item:nth-child(1)');
-            break;
-        case 'page-list':
-            navButton = document.querySelector('.nav-item:nth-child(2)');
-            break;
-        case 'page-stats':
-            navButton = document.querySelector('.nav-item:nth-child(3)');
-            break;
-        case 'page-guide':
-            navButton = document.querySelector('.nav-item:nth-child(4)');
-            break;
+
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    const activeNavItem = document.querySelector(`.nav-item[onclick="showPage('${pageId}')"]`);
+    if (activeNavItem) {
+        activeNavItem.classList.add('active');
     }
     
-    if (navButton) {
-        navButton.classList.add('active');
-    }
+    // Refresh data saat pindah page
+    if (pageId === 'page-list') renderReservationList();
+    if (pageId === 'page-stats') generateStats('today');
 }
 
 function calculateAge() {
-    const dob = new Date(dobInput.value);
+    if (!dobInput.value) return;
+    const birthDate = new Date(dobInput.value);
     const today = new Date();
     
-    if (isNaN(dob.getTime())) return;
+    // Hitung selisih tahun, bulan, dan hari
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
     
-    let years = today.getFullYear() - dob.getFullYear();
-    let months = today.getMonth() - dob.getMonth();
-    let days = today.getDate() - dob.getDate();
-    
-    // Koreksi jika hari lahir belum lewat di bulan ini
+    // Jika hari negatif, kurangi satu bulan dan tambahkan hari dari bulan sebelumnya
     if (days < 0) {
         months--;
-        // Hitung jumlah hari di bulan sebelumnya
         const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
         days += lastMonth.getDate();
     }
     
-    // Koreksi jika bulan lahir belum lewat di tahun ini
+    // Jika bulan negatif, kurangi satu tahun dan tambahkan 12 bulan
     if (months < 0) {
         years--;
         months += 12;
     }
     
-    // Hitung usia dalam minggu (untuk bayi)
-    const diffTime = Math.abs(today - dob);
-    const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
+    // Hitung total hari untuk konversi ke minggu
+    const totalDays = Math.floor((today - birthDate) / (1000 * 60 * 60 * 24));
+    const weeks = Math.floor(totalDays / 7);
+    const remainingDays = totalDays % 7;
     
-    let ageText = '';
+    let ageString = '';
     if (years > 0) {
-        ageText = `${years} Tahun`;
-        if (months > 0) ageText += `, ${months} Bulan`;
-    } else if (months > 0) {
-        ageText = `${months} Bulan`;
-        if (diffWeeks % 4 > 0) ageText += `, ${Math.floor(diffWeeks % 4)} Minggu`;
-    } else {
-        ageText = `${diffWeeks} Minggu`;
-        if (days % 7 > 0) ageText += `, ${days % 7} Hari`;
+        ageString += `${years} tahun `;
+    }
+    if (months > 0) {
+        ageString += `${months} bulan `;
+    }
+    if (weeks > 0 && years < 1) {
+        ageString += `${weeks} minggu `;
+    }
+    if (remainingDays > 0 && years < 1 && months < 1) {
+        ageString += `${remainingDays} hari`;
     }
     
-    ageInput.value = ageText;
+    ageInput.value = ageString || '0 hari';
 }
 
 function handleCategoryChange() {
-    if (categorySelect.value === 'other') {
-        categoryOtherInput.classList.remove('hidden');
-        categoryOtherInput.required = true;
-    } else {
-        categoryOtherInput.classList.add('hidden');
-        categoryOtherInput.required = false;
-    }
+    categoryOtherInput.classList.toggle('hidden', categorySelect.value !== 'other');
 }
 
-function handleComplaintToggle() {
-    const hasComplaint = document.querySelector('input[name="complaint_toggle"]:checked').value === 'ya';
-    complaintText.classList.toggle('hidden', !hasComplaint);
-    complaintText.required = hasComplaint;
+function handleComplaintToggle(event) {
+    complaintText.classList.toggle('hidden', event.target.value === 'tidak');
 }
 
 function addTreatmentField() {
     treatmentCounter++;
+    const container = document.getElementById('treatments-container');
     const newField = document.createElement('div');
+    newField.className = 'mt-2 relative';
     newField.innerHTML = `
         <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa ${treatmentCounter}</label>
-        <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" placeholder="Nama paket treatment">
+        <input type="text" name="treatment" class="w-full p-3 pr-10 rounded-lg form-input" placeholder="Nama paket treatment">
+        <button type="button" onclick="this.parentElement.remove()" class="absolute right-2 top-9 text-red-500 hover:text-red-700">&times;</button>
     `;
-    document.getElementById('treatments-container').appendChild(newField);
+    container.appendChild(newField);
 }
 
 function populateTimeSlots() {
-    // Kosongkan dropdown waktu
+    const selectedDate = bookingDateInput.value || new Date().toISOString().split('T')[0];
+    const timeSlots = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
     bookingTimeSelect.innerHTML = '';
     
-    // Jika tanggal tidak dipilih, keluar dari fungsi
-    if (!bookingDateInput.value) return;
-    
-    // Waktu operasional klinik (contoh: 08:00 - 17:00)
-    const startHour = 8;
-    const endHour = 17;
-    const slotDuration = 60; // menit
-    
-    // Buat opsi jam berdasarkan waktu operasional
-    for (let hour = startHour; hour <= endHour; hour++) {
-        for (let minute = 0; minute < 60; minute += slotDuration) {
-            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-            
-            // Hitung kuota yang tersedia untuk jam ini
-            const selectedDate = bookingDateInput.value;
-            const reservedCount = reservations.filter(r => 
-                r.bookingDate === selectedDate && 
-                r.bookingTime === timeString && 
-                r.status !== 'Batal'
-            ).length;
-            
-            // Kuota maksimal per jam (misalnya 3 pasien per jam)
-            const maxQuota = 3;
-            const availableSlots = maxQuota - reservedCount;
-            
-            // Tambahkan ke dropdown hanya jika masih ada kuota
-            if (availableSlots > 0) {
-                const option = document.createElement('option');
-                option.value = timeString;
-                option.textContent = `${timeString} (${availableSlots} slot tersedia)`;
-                option.disabled = availableSlots <= 0;
-                bookingTimeSelect.appendChild(option);
-            }
-        }
-    }
-    
-    // Jika tidak ada slot tersedia sama sekali
-    if (bookingTimeSelect.options.length === 0) {
+    timeSlots.forEach(time => {
+        const reservationsAtTime = reservations.filter(r => r.bookingDate === selectedDate && r.bookingTime === time).length;
+        const availableSlots = 4 - reservationsAtTime;
+        const isFull = availableSlots <= 0;
+
         const option = document.createElement('option');
-        option.textContent = 'Tidak ada slot tersedia';
-        option.disabled = true;
+        option.value = time;
+        option.textContent = `${time} - ${isFull ? 'Penuh' : `Sisa ${availableSlots} slot`}`;
+        option.disabled = isFull;
         bookingTimeSelect.appendChild(option);
-    }
-}
-
-function handleCustomerSearch() {
-    const query = searchCustomerInput.value.toLowerCase().trim();
-    
-    // Kosongkan hasil pencarian jika query kosong
-    if (!query) {
-        searchResultsContainer.innerHTML = '';
-        searchResultsContainer.classList.add('hidden');
-        return;
-    }
-    
-    // Filter pelanggan berdasarkan query
-    const results = customers.filter(customer => 
-        customer.patientName.toLowerCase().includes(query) ||
-        customer.bookerName.toLowerCase().includes(query) ||
-        customer.phone.includes(query) ||
-        (customer.instagram && customer.instagram.toLowerCase().includes(query)) ||
-        (customer.rme && customer.rme.toLowerCase().includes(query))
-    );
-    
-    // Tampilkan hasil
-    searchResultsContainer.innerHTML = '';
-    
-    if (results.length === 0) {
-        const noResult = document.createElement('div');
-        noResult.className = 'p-3 text-gray-500 text-center';
-        noResult.textContent = 'Tidak ditemukan pelanggan';
-        searchResultsContainer.appendChild(noResult);
-    } else {
-        results.forEach(customer => {
-            const resultItem = document.createElement('div');
-            resultItem.className = 'p-3 border-b border-pink-100 hover:bg-pink-50 cursor-pointer';
-            resultItem.innerHTML = `
-                <div class="font-semibold">${customer.patientName}</div>
-                <div class="text-sm text-gray-600">${customer.phone} | ${customer.rme || 'No RME'}</div>
-            `;
-            resultItem.addEventListener('click', () => {
-                fillCustomerData(customer);
-                searchResultsContainer.innerHTML = '';
-                searchResultsContainer.classList.add('hidden');
-            });
-            searchResultsContainer.appendChild(resultItem);
-        });
-    }
-    
-    searchResultsContainer.classList.remove('hidden');
-}
-
-function fillCustomerData(customer) {
-    document.getElementById('rme').value = customer.rme || '';
-    document.getElementById('booker-name').value = customer.bookerName;
-    document.getElementById('phone').value = customer.phone;
-    document.getElementById('instagram').value = customer.instagram || '';
-    document.getElementById('address').value = customer.address || '';
-    document.getElementById('patient-name').value = customer.patientName;
-    document.getElementById('dob').value = customer.dob;
-    calculateAge(); // Hitung ulang usia berdasarkan DOB
-    
-    // Set jenis kelamin
-    const genderRadios = document.getElementsByName('gender');
-    for (const radio of genderRadios) {
-        if (radio.value === customer.gender) {
-            radio.checked = true;
-            break;
-        }
-    }
-}
-
-async function handleFormSubmit(e) {
-    e.preventDefault();
-    
-    // Validasi form
-    if (!validateForm()) return;
-    
-    // Tampilkan loading pada tombol submit
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    setButtonLoading(submitButton, true);
-    
-    try {
-        // Kumpulkan data dari form
-        const formData = {
-            rme: document.getElementById('rme').value,
-            bookerName: document.getElementById('booker-name').value,
-            phone: document.getElementById('phone').value,
-            instagram: document.getElementById('instagram').value,
-            address: document.getElementById('address').value,
-            patientName: document.getElementById('patient-name').value,
-            dob: document.getElementById('dob').value,
-            age: document.getElementById('age').value,
-            gender: document.querySelector('input[name="gender"]:checked').value,
-            category: categorySelect.value === 'other' ? categoryOtherInput.value : categorySelect.value,
-            treatments: Array.from(document.querySelectorAll('input[name="treatment"]')).map(input => input.value).filter(Boolean),
-            hasComplaint: document.querySelector('input[name="complaint_toggle"]:checked').value,
-            complaintText: document.getElementById('complaint-text').value,
-            bookingDate: document.getElementById('booking-date').value,
-            bookingTime: document.getElementById('booking-time').value,
-            status: 'Dalam Antrian'
-        };
-        
-        // Kirim data ke Google Sheet
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'createReservation',
-                data: formData
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // Reset form
-            reservationForm.reset();
-            treatmentCounter = 1;
-            document.getElementById('treatments-container').innerHTML = `
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa 1</label>
-                    <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" placeholder="Nama paket treatment" required>
-                </div>
-            `;
-            
-            // Refresh data dan tampilkan tiket
-            await fetchInitialData();
-            showTicketModal(result.reservationId);
-        } else {
-            alert('Gagal membuat reservasi: ' + (result.message || 'Terjadi kesalahan'));
-        }
-    } catch (error) {
-        console.error('Error submitting form:', error);
-        alert('Terjadi kesalahan saat mengirim data. Silakan coba lagi.');
-    } finally {
-        setButtonLoading(submitButton, false);
-    }
-}
-
-function validateForm() {
-    // Validasi sederhana - pastikan semua field required terisi
-    const requiredFields = reservationForm.querySelectorAll('[required]');
-    let isValid = true;
-    
-    for (const field of requiredFields) {
-        if (!field.value.trim()) {
-            isValid = false;
-            field.classList.add('border-red-500');
-            // Hapus kelas error setelah beberapa saat
-            setTimeout(() => field.classList.remove('border-red-500'), 3000);
-        }
-    }
-    
-    return isValid;
-}
-
-function renderReservationList() {
-    const container = document.getElementById('reservation-list');
-    const statusFilter = filterStatusSelect.value;
-    const searchQuery = searchReservationsInput.value.toLowerCase();
-    const sortOption = sortBySelect.value;
-    
-    // Filter reservasi berdasarkan status dan pencarian
-    let filteredReservations = reservations.filter(r => {
-        const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-        const matchesSearch = 
-            r.patientName.toLowerCase().includes(searchQuery) ||
-            r.bookerName.toLowerCase().includes(searchQuery) ||
-            r.phone.includes(searchQuery) ||
-            r.rme.toLowerCase().includes(searchQuery);
-        
-        return matchesStatus && matchesSearch;
-    });
-    
-    // Urutkan reservasi
-    filteredReservations.sort((a, b) => {
-        switch(sortOption) {
-            case 'timestamp-desc':
-                return new Date(b.timestamp) - new Date(a.timestamp);
-            case 'timestamp-asc':
-                return new Date(a.timestamp) - new Date(b.timestamp);
-            case 'name-asc':
-                return a.patientName.localeCompare(b.patientName);
-            case 'name-desc':
-                return b.patientName.localeCompare(a.patientName);
-            default:
-                return 0;
-        }
-    });
-    
-    // Kosongkan container
-    container.innerHTML = '';
-    
-    if (filteredReservations.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-500 mt-10">Tidak ada reservasi yang sesuai.</p>';
-        return;
-    }
-    
-    // Render setiap reservasi
-    filteredReservations.forEach(reservation => {
-        const card = document.createElement('div');
-        card.className = 'bg-white rounded-xl p-4 shadow-md border border-pink-100';
-        
-        // Format tanggal dan waktu
-        const bookingDate = new Date(reservation.bookingDate).toLocaleDateString('id-ID', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-        
-        // Tentukan kelas warna status
-        let statusClass = '';
-        switch(reservation.status) {
-            case 'Dalam Antrian':
-                statusClass = 'bg-blue-100 text-blue-800';
-                break;
-            case 'Sedang Treatment':
-                statusClass = 'bg-yellow-100 text-yellow-800';
-                break;
-            case 'Selesai':
-                statusClass = 'bg-green-100 text-green-800';
-                break;
-            default:
-                statusClass = 'bg-gray-100 text-gray-800';
-        }
-        
-        card.innerHTML = `
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <h3 class="font-bold text-lg text-pink-800">${reservation.patientName}</h3>
-                    <p class="text-sm text-gray-600">${reservation.bookerName} • ${reservation.phone}</p>
-                </div>
-                <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${reservation.status}</span>
-            </div>
-            
-            <div class="mb-3 text-sm">
-                <p><span class="font-semibold">RME:</span> ${reservation.rme || '-'}</p>
-                <p><span class="font-semibold">Treatment:</span> ${Array.isArray(reservation.treatments) ? reservation.treatments.join(', ') : reservation.treatments}</p>
-                <p><span class="font-semibold">Jadwal:</span> ${bookingDate}, ${reservation.bookingTime}</p>
-                ${reservation.hasComplaint === 'ya' && reservation.complaintText ? `<p><span class="font-semibold">Keluhan:</span> ${reservation.complaintText}</p>` : ''}
-                ${reservation.therapist ? `<p><span class="font-semibold">Terapis:</span> ${reservation.therapist}</p>` : ''}
-            </div>
-            
-            <div class="flex flex-wrap gap-2">
-                ${reservation.status === 'Dalam Antrian' ? `
-                    <button onclick="startTreatment('${reservation.id}')" class="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm font-semibold">Mulai Treatment</button>
-                ` : ''}
-                
-                ${reservation.status === 'Sedang Treatment' ? `
-                    <button onclick="showTherapistModal('${reservation.id}')" class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-semibold">Selesaikan</button>
-                ` : ''}
-                
-                <button onclick="editReservation('${reservation.id}')" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm font-semibold">Edit</button>
-                <button onclick="cancelReservation('${reservation.id}')" class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm font-semibold">Batal</button>
-            </div>
-        `;
-        
-        container.appendChild(card);
     });
 }
 
-function showTherapistModal(reservationId) {
-    currentlyEditingReservationId = reservationId;
-    document.getElementById('therapist-modal').classList.remove('hidden');
-    
-    // Reset form modal
-    document.getElementById('therapist-name').value = '';
-    document.getElementById('additional-treatment').value = '';
-    document.getElementById('treatment-fee').value = '';
-    document.getElementById('medical-temperature').value = '';
-    document.getElementById('medical-weight').value = '';
-    document.getElementById('medical-height').value = '';
-    document.getElementById('medical-bmi').value = '';
-    document.getElementById('medical-allergy').value = '';
-    document.getElementById('medical-blood-pressure').value = '';
-    document.getElementById('medical-notes').value = '';
-}
-
-function hideTherapistModal() {
-    document.getElementById('therapist-modal').classList.add('hidden');
-    currentlyEditingReservationId = null;
-}
-
+// Hitung BMI secara otomatis
 function calculateBMI() {
     const weight = parseFloat(medicalWeight.value);
-    const height = parseFloat(medicalHeight.value) / 100; // Konversi cm ke m
+    const height = parseFloat(medicalHeight.value) / 100; // Convert cm to m
     
-    if (weight && height && height > 0) {
+    if (weight && height) {
         const bmi = weight / (height * height);
         medicalBmi.value = bmi.toFixed(1);
     } else {
@@ -1025,252 +687,466 @@ function calculateBMI() {
     }
 }
 
-async function completeTreatment() {
-    const therapistName = document.getElementById('therapist-name').value;
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    showLoading();
+
+    const selectedDate = bookingDateInput.value;
+    const selectedTime = bookingTimeSelect.value;
     
-    if (!therapistName) {
-        alert('Nama terapis harus diisi!');
+    const reservationsAtTime = reservations.filter(r => r.bookingDate === selectedDate && r.bookingTime === selectedTime).length;
+    if (reservationsAtTime >= 4) {
+        hideLoading();
+        alert('Maaf, kuota untuk jam ini sudah penuh. Silakan pilih jam lain.');
         return;
     }
-    
-    showLoading();
-    
-    try {
-        const medicalData = {
-            therapist: therapistName,
-            additionalTreatment: document.getElementById('additional-treatment').value,
-            fee: document.getElementById('treatment-fee').value,
-            temperature: document.getElementById('medical-temperature').value,
-            weight: document.getElementById('medical-weight').value,
-            height: document.getElementById('medical-height').value,
-            bmi: document.getElementById('medical-bmi').value,
-            allergy: document.getElementById('medical-allergy').value,
-            bloodPressure: document.getElementById('medical-blood-pressure').value,
-            medicalNotes: document.getElementById('medical-notes').value
-        };
-        
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'completeTreatment',
-                reservationId: currentlyEditingReservationId,
-                data: medicalData
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            // Refresh data dan tutup modal
-            await fetchInitialData();
-            hideTherapistModal();
-            alert('Treatment berhasil diselesaikan!');
-        } else {
-            alert('Gagal menyelesaikan treatment: ' + (result.message || 'Terjadi kesalahan'));
-        }
-    } catch (error) {
-        console.error('Error completing treatment:', error);
-        alert('Terjadi kesalahan saat menyelesaikan treatment. Silakan coba lagi.');
-    } finally {
-        hideLoading();
-    }
-}
 
-async function startTreatment(reservationId) {
-    if (!confirm('Mulai treatment untuk pasien ini?')) return;
-    
-    showLoading();
-    
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'updateStatus',
-                reservationId: reservationId,
-                status: 'Sedang Treatment'
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            await fetchInitialData();
-            alert('Status berhasil diubah menjadi "Sedang Treatment"');
-        } else {
-            alert('Gagal mengubah status: ' + (result.message || 'Terjadi kesalahan'));
-        }
-    } catch (error) {
-        console.error('Error starting treatment:', error);
-        alert('Terjadi kesalahan saat mengubah status. Silakan coba lagi.');
-    } finally {
-        hideLoading();
-    }
-}
+    const treatments = Array.from(document.querySelectorAll('input[name="treatment"]')).map(input => input.value).filter(Boolean);
 
-async function cancelReservation(reservationId) {
-    if (!confirm('Batalkan reservasi ini?')) return;
-    
-    showLoading();
-    
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'updateStatus',
-                reservationId: reservationId,
-                status: 'Batal'
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            await fetchInitialData();
-            alert('Reservasi berhasil dibatalkan');
-        } else {
-            alert('Gagal membatalkan reservasi: ' + (result.message || 'Terjadi kesalahan'));
-        }
-    } catch (error) {
-        console.error('Error canceling reservation:', error);
-        alert('Terjadi kesalahan saat membatalkan reservasi. Silakan coba lagi.');
-    } finally {
-        hideLoading();
+    let rme = document.getElementById('rme').value;
+    if (!rme) {
+       rme = `RME-${Date.now()}`;
+       // Add new customer to local list
+       const newCustomer = {
+            rme: rme,
+            bookerName: document.getElementById('booker-name').value,
+            phone: document.getElementById('phone').value,
+            instagram: document.getElementById('instagram').value,
+            address: document.getElementById('address').value,
+            patientName: document.getElementById('patient-name').value,
+            dob: document.getElementById('dob').value,
+            gender: document.querySelector('input[name="gender"]:checked').value
+       };
+       customers.push(newCustomer);
     }
-}
+    
+    const reservationData = {
+        id: `RES-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        rme: rme,
+        bookerName: document.getElementById('booker-name').value,
+        phone: document.getElementById('phone').value,
+        instagram: document.getElementById('instagram').value,
+        address: document.getElementById('address').value,
+        patientName: document.getElementById('patient-name').value,
+        dob: document.getElementById('dob').value,
+        age: document.getElementById('age').value,
+        gender: document.querySelector('input[name="gender"]:checked').value,
+        category: categorySelect.value === 'other' ? categoryOtherInput.value : categorySelect.value,
+        treatments: treatments.join(', '),
+        hasComplaint: document.querySelector('input[name="complaint_toggle"]:checked').value === 'ya',
+        complaintText: complaintText.value,
+        bookingDate: selectedDate,
+        bookingTime: selectedTime,
+        status: 'Dalam Antrian', // Status: Dalam Antrian, Sedang Treatment, Selesai
+        therapist: '',
+        additionalTreatment: '',
+        fee: '',
+        // Data medis baru
+        temperature: '',
+        weight: '',
+        height: '',
+        bmi: '',
+        allergy: '',
+        bloodPressure: '',
+        medicalNotes: ''
+    };
+    
+    // Kirim data ke Google Sheets
+    if (GOOGLE_SCRIPT_URL !== 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
+        try {
+            const response = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `action=newReservation&data=${encodeURIComponent(JSON.stringify(reservationData))}`
+            });
+             const result = await response.text(); // Baca response sebagai teks
+             console.log('Google Script Response:', result);
 
-function editReservation(reservationId) {
-    // Cari reservasi berdasarkan ID
-    const reservation = reservations.find(r => r.id === reservationId);
-    if (!reservation) {
-        alert('Reservasi tidak ditemukan!');
-        return;
-    }
-    
-    // Isi form dengan data reservasi
-    document.getElementById('rme').value = reservation.rme || '';
-    document.getElementById('booker-name').value = reservation.bookerName;
-    document.getElementById('phone').value = reservation.phone;
-    document.getElementById('instagram').value = reservation.instagram || '';
-    document.getElementById('address').value = reservation.address || '';
-    document.getElementById('patient-name').value = reservation.patientName;
-    document.getElementById('dob').value = reservation.dob;
-    calculateAge();
-    
-    // Set jenis kelamin
-    const genderRadios = document.getElementsByName('gender');
-    for (const radio of genderRadios) {
-        radio.checked = (radio.value === reservation.gender);
-    }
-    
-    // Set kategori
-    const isOtherCategory = ![
-        'Baby/Kid Spa', 'Ladies Spa', 'Mom/Bumil/Nifas Spa', 
-        'Tindik dr Evoo', 'ANC/Senam', 'Umum', 'Partus/Melahirkan', 'Homecare'
-    ].includes(reservation.category);
-    
-    if (isOtherCategory) {
-        categorySelect.value = 'other';
-        categoryOtherInput.value = reservation.category;
-        categoryOtherInput.classList.remove('hidden');
+        } catch (error) {
+            console.error('Gagal mengirim data ke Google Sheet:', error);
+            // Tetap lanjutkan meski gagal, data tersimpan lokal
+        }
     } else {
-        categorySelect.value = reservation.category;
-        categoryOtherInput.classList.add('hidden');
+        console.warn("URL Google Script belum diatur. Data hanya disimpan lokal.");
     }
     
-    // Set treatment
-    const treatmentsContainer = document.getElementById('treatments-container');
-    treatmentsContainer.innerHTML = '';
+    reservations.push(reservationData);
     
-    const treatmentValues = Array.isArray(reservation.treatments) ? 
-        reservation.treatments : [reservation.treatments];
+    // Reset form dan tampilkan tiket
+    reservationForm.reset();
+    treatmentCounter = 1;
+    document.getElementById('treatments-container').innerHTML = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa 1</label>
+            <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" placeholder="Nama paket treatment" required>
+        </div>
+    `;
+    handleCategoryChange();
+    handleComplaintToggle({ target: { value: 'tidak' } });
+    calculateAge();
+    populateTimeSlots();
     
-    treatmentValues.forEach((treatment, index) => {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa ${index + 1}</label>
-            <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" value="${treatment}" ${index === 0 ? 'required' : ''}>
-        `;
-        treatmentsContainer.appendChild(div);
+    hideLoading();
+    showTicket(reservationData);
+}
+
+
+// --- FUNGSI PENCARIAN PELANGGAN ---
+function handleCustomerSearch(e) {
+    const query = e.target.value.toLowerCase();
+    if (query.length < 2) {
+        searchResultsContainer.innerHTML = '';
+        return;
+    }
+
+    const results = customers.filter(c => 
+        c.patientName.toLowerCase().includes(query) ||
+        (c.phone && c.phone.includes(query)) ||
+        (c.instagram && c.instagram.toLowerCase().includes(query)) ||
+        (c.rme && c.rme.toLowerCase().includes(query))
+    );
+
+    renderSearchResults(results);
+}
+
+function renderSearchResults(results) {
+    if (results.length === 0) {
+        searchResultsContainer.innerHTML = '<div class="p-3 text-sm text-gray-500">Tidak ditemukan pelanggan.</div>';
+        return;
+    }
+    searchResultsContainer.innerHTML = results.map(customer => `
+        <div class="p-3 hover:bg-pink-50 cursor-pointer border-b border-pink-100" onclick="selectCustomer('${customer.rme}')">
+            <p class="font-semibold text-pink-800">${customer.patientName} (${customer.rme})</p>
+            <p class="text-sm text-gray-500">${customer.phone}</p>
+        </div>
+    `).join('');
+}
+
+function selectCustomer(rme) {
+    const customer = customers.find(c => c.rme === rme);
+    if (customer) {
+        document.getElementById('rme').value = customer.rme;
+        document.getElementById('booker-name').value = customer.bookerName;
+        document.getElementById('phone').value = customer.phone;
+        document.getElementById('instagram').value = customer.instagram;
+        document.getElementById('address').value = customer.address;
+        document.getElementById('patient-name').value = customer.patientName;
+        document.getElementById('dob').value = customer.dob;
+        const genderRadio = document.querySelector(`input[name="gender"][value="${customer.gender}"]`);
+        if (genderRadio) genderRadio.checked = true;
+        
+        calculateAge();
+        searchResultsContainer.innerHTML = '';
+        searchCustomerInput.value = '';
+    }
+}
+
+// --- FUNGSI DAFTAR RESERVASI ---
+function renderReservationList() {
+    const listContainer = document.getElementById('reservation-list');
+    const query = searchReservationsInput.value.toLowerCase();
+    const statusFilter = filterStatusSelect.value;
+    const sortBy = sortBySelect.value;
+
+    let filteredReservations = reservations.filter(r => 
+        (statusFilter === 'all' || r.status === statusFilter) &&
+        (r.patientName.toLowerCase().includes(query) ||
+        r.phone.includes(query) ||
+        r.rme.toLowerCase().includes(query) ||
+        r.treatments.toLowerCase().includes(query))
+    );
+
+    // Sorting
+    switch(sortBy) {
+        case 'timestamp-desc':
+            filteredReservations.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+            break;
+        case 'timestamp-asc':
+            filteredReservations.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+            break;
+        case 'name-asc':
+            filteredReservations.sort((a,b) => a.patientName.localeCompare(b.patientName));
+            break;
+        case 'name-desc':
+            filteredReservations.sort((a,b) => b.patientName.localeCompare(a.patientName));
+            break;
+    }
+
+    if (filteredReservations.length === 0) {
+        listContainer.innerHTML = `<p class="text-center text-gray-500 mt-10">Tidak ada reservasi ${query || statusFilter !== 'all' ? 'yang cocok.' : 'saat ini.'}</p>`;
+        return;
+    }
+    
+    const statusGroups = {
+        'Sedang Treatment': [],
+        'Dalam Antrian': [],
+        'Selesai': [],
+    };
+
+    filteredReservations.forEach(res => {
+      if(statusGroups[res.status] !== undefined) {
+         statusGroups[res.status].push(res);
+      }
     });
+
+    listContainer.innerHTML = ``;
     
-    treatmentCounter = treatmentValues.length;
+    Object.entries(statusGroups).forEach(([status, items]) => {
+        if (items.length > 0) {
+            const statusColor = getStatusInfo(status).color;
+            listContainer.innerHTML += `<h3 class="font-bold text-lg ${statusColor} border-b-2 ${getStatusInfo(status).borderColor} pb-2 mt-6">${status} (${items.length})</h3>`;
+            items.forEach(res => {
+                listContainer.innerHTML += createReservationCard(res);
+            });
+        }
+    });
+}
+
+function createReservationCard(res) {
+    const statusInfo = getStatusInfo(res.status);
+
+    let actionButton = '';
+    if (res.status === 'Dalam Antrian') {
+        actionButton = `<button id="btn-${res.id}" onclick="updateStatus('${res.id}', 'Sedang Treatment')" class="w-full text-center py-2 px-4 rounded-lg bg-yellow-500 text-white font-semibold mt-3">Mulai Treatment</button>`;
+    } else if (res.status === 'Sedang Treatment') {
+        actionButton = `<button onclick="showTherapistModal('${res.id}')" class="w-full text-center py-2 px-4 rounded-lg bg-green-500 text-white font-semibold mt-3">Selesaikan</button>`;
+    }
     
-    // Set keluhan
-    const hasComplaint = reservation.hasComplaint === 'ya';
-    document.querySelector(`input[name="complaint_toggle"][value="${hasComplaint ? 'ya' : 'tidak'}"]`).checked = true;
-    complaintText.value = reservation.complaintText || '';
-    complaintText.classList.toggle('hidden', !hasComplaint);
+    // Find past treatments
+    const patientHistory = reservations.filter(r => r.rme === res.rme && r.id !== res.id && r.status === 'Selesai');
     
-    // Set tanggal dan waktu
-    document.getElementById('booking-date').value = reservation.bookingDate;
-    document.getElementById('booking-time').value = reservation.bookingTime;
-    
-    // Simpan ID reservasi yang sedang diedit
+    return `
+        <div class="bg-white border-l-4 ${statusInfo.borderColor} rounded-r-lg shadow-md p-4">
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="font-bold text-lg text-pink-800">${res.patientName}</p>
+                    <p class="text-sm text-gray-500">${res.rme}</p>
+                </div>
+                <span class="text-xs font-bold py-1 px-2 rounded-full ${statusInfo.badge}">${res.status}</span>
+            </div>
+            <div class="mt-3 text-sm text-gray-700 space-y-1">
+                <p><i class="fas fa-phone-alt w-4 text-center mr-2 text-pink-400"></i> ${res.phone}</p>
+                <p><i class="fas fa-cut w-4 text-center mr-2 text-pink-400"></i> <span class="font-semibold">${res.treatments}</span></p>
+                <p><i class="fas fa-calendar-alt w-4 text-center mr-2 text-pink-400"></i> ${formatDate(res.bookingDate)} @ ${res.bookingTime}</p>
+                ${res.therapist ? `<p><i class="fas fa-user-md w-4 text-center mr-2 text-pink-400"></i> Terapis: ${res.therapist}</p>` : ''}
+                ${res.additionalTreatment ? `<p><i class="fas fa-plus-circle w-4 text-center mr-2 text-pink-400"></i> Treatment Tambahan: ${res.additionalTreatment}</p>` : ''}
+                ${res.fee ? `<p><i class="fas fa-money-bill-wave w-4 text-center mr-2 text-pink-400"></i> Tarif: Rp ${Number(res.fee).toLocaleString('id-ID')}</p>` : ''}
+            </div>
+            ${patientHistory.length > 0 ? `
+            <details class="mt-2 text-xs">
+                <summary class="cursor-pointer text-pink-600 font-semibold">Riwayat Treatment (${patientHistory.length})</summary>
+                <ul class="list-disc pl-5 mt-1 text-gray-600">
+                    ${patientHistory.map(h => `<li>${formatDate(h.bookingDate)}: ${h.treatments}</li>`).join('')}
+                </ul>
+            </details>
+            ` : ''}
+            ${actionButton}
+        </div>
+    `;
+}
+
+function getStatusInfo(status) {
+    switch(status) {
+        case 'Dalam Antrian':
+            return { color: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', borderColor: 'border-blue-500' };
+        case 'Sedang Treatment':
+            return { color: 'text-yellow-600', badge: 'bg-yellow-100 text-yellow-800', borderColor: 'border-yellow-500' };
+        case 'Selesai':
+            return { color: 'text-green-600', badge: 'bg-green-100 text-green-800', borderColor: 'border-green-500' };
+        default:
+            return { color: 'text-gray-600', badge: 'bg-gray-100 text-gray-800', borderColor: 'border-gray-500' };
+    }
+}
+
+async function updateStatus(id, newStatus, therapistName = '', additionalTreatment = '', fee = '', temperature = '', weight = '', height = '', bmi = '', allergy = '', bloodPressure = '', medicalNotes = '') {
+    // Tampilkan animasi loading pada tombol
+    const button = document.getElementById(`btn-${id}`);
+    if (button) {
+        button.classList.add('btn-loading');
+        loadingButtons[id] = true;
+    }
+
+    const reservation = reservations.find(r => r.id === id);
+    if (reservation) {
+        reservation.status = newStatus;
+        if (therapistName) {
+            reservation.therapist = therapistName;
+        }
+        if (additionalTreatment) {
+            reservation.additionalTreatment = additionalTreatment;
+        }
+        if (fee) {
+            reservation.fee = fee;
+        }
+        // Update data medis
+        if (temperature) reservation.temperature = temperature;
+        if (weight) reservation.weight = weight;
+        if (height) reservation.height = height;
+        if (bmi) reservation.bmi = bmi;
+        if (allergy) reservation.allergy = allergy;
+        if (bloodPressure) reservation.bloodPressure = bloodPressure;
+        if (medicalNotes) reservation.medicalNotes = medicalNotes;
+
+        if (GOOGLE_SCRIPT_URL !== 'MASUKKAN_URL_SCRIPT_ANDA_DI_SINI') {
+             try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `action=updateStatus&data=${encodeURIComponent(JSON.stringify({
+                        id: id, 
+                        status: newStatus, 
+                        therapist: therapistName,
+                        additionalTreatment: additionalTreatment,
+                        fee: fee,
+                        temperature: temperature,
+                        weight: weight,
+                        height: height,
+                        bmi: bmi,
+                        allergy: allergy,
+                        bloodPressure: bloodPressure,
+                        medicalNotes: medicalNotes
+                    }))}`
+                });
+            } catch (error) {
+                console.error('Gagal update status ke Google Sheet:', error);
+            }
+        }
+        
+        // Hapus animasi loading setelah selesai
+        if (button) {
+            setTimeout(() => {
+                button.classList.remove('btn-loading');
+                delete loadingButtons[id];
+            }, 1000);
+        }
+        
+        renderReservationList();
+    }
+}
+
+function showTherapistModal(reservationId) {
     currentlyEditingReservationId = reservationId;
     
-    // Scroll ke form dan tampilkan halaman form
-    showPage('page-form');
-    window.scrollTo(0, 0);
-    
-    // Perbarui timeslots
-    populateTimeSlots();
-}
-
-function showTicketModal(reservationId) {
+    // Isi data medis jika sudah ada
     const reservation = reservations.find(r => r.id === reservationId);
-    if (!reservation) return;
-    
-    // Isi data tiket
-    document.getElementById('ticket-rme').textContent = reservation.rme || '-';
-    document.getElementById('ticket-name').textContent = reservation.patientName;
-    document.getElementById('ticket-treatment').textContent = Array.isArray(reservation.treatments) ? 
-        reservation.treatments.join(', ') : reservation.treatments;
-    
-    const bookingDate = new Date(reservation.bookingDate).toLocaleDateString('id-ID', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-    document.getElementById('ticket-schedule').textContent = `${bookingDate}, ${reservation.bookingTime}`;
-    
-    // Tampilkan data medis jika sudah ada
-    const hasMedicalData = reservation.temperature || reservation.weight || reservation.height || 
-                          reservation.allergy || reservation.bloodPressure || reservation.medicalNotes;
-    
-    if (hasMedicalData) {
-        document.getElementById('ticket-medical-data').classList.remove('hidden');
-        let medicalDetails = '';
-        
-        if (reservation.temperature) medicalDetails += `<p><strong>Suhu:</strong> ${reservation.temperature}°C</p>`;
-        if (reservation.weight) medicalDetails += `<p><strong>Berat:</strong> ${reservation.weight} kg</p>`;
-        if (reservation.height) medicalDetails += `<p><strong>Tinggi:</strong> ${reservation.height} cm</p>`;
-        if (reservation.bmi) medicalDetails += `<p><strong>BMI:</strong> ${reservation.bmi}</p>`;
-        if (reservation.allergy) medicalDetails += `<p><strong>Alergi:</strong> ${reservation.allergy}</p>`;
-        if (reservation.bloodPressure) medicalDetails += `<p><strong>Tekanan Darah:</strong> ${reservation.bloodPressure}</p>`;
-        if (reservation.medicalNotes) medicalDetails += `<p><strong>Catatan:</strong> ${reservation.medicalNotes}</p>`;
-        
-        document.getElementById('ticket-medical-details').innerHTML = medicalDetails;
-    } else {
-        document.getElementById('ticket-medical-data').classList.add('hidden');
+    if (reservation) {
+        if (reservation.temperature) medicalTemperature.value = reservation.temperature;
+        if (reservation.weight) medicalWeight.value = reservation.weight;
+        if (reservation.height) medicalHeight.value = reservation.height;
+        if (reservation.bmi) medicalBmi.value = reservation.bmi;
+        if (reservation.allergy) medicalAllergy.value = reservation.allergy;
+        if (reservation.bloodPressure) medicalBloodPressure.value = reservation.bloodPressure;
+        if (reservation.medicalNotes) medicalNotes.value = reservation.medicalNotes;
     }
     
-    // Hitung nomor antrian (berdasarkan jumlah reservasi dengan status "Dalam Antrian")
-    const queueNumber = reservations.filter(r => 
-        r.status === 'Dalam Antrian' || r.status === 'Sedang Treatment'
-    ).length;
-    document.getElementById('ticket-queue-number').textContent = `A${queueNumber.toString().padStart(3, '0')}`;
+    document.getElementById('therapist-modal').classList.remove('hidden');
+    document.getElementById('therapist-name').focus();
+}
+
+function hideTherapistModal() {
+    document.getElementById('therapist-modal').classList.add('hidden');
+    document.getElementById('therapist-name').value = '';
+    document.getElementById('additional-treatment').value = '';
+    document.getElementById('treatment-fee').value = '';
+    // Reset form medis
+    medicalTemperature.value = '';
+    medicalWeight.value = '';
+    medicalHeight.value = '';
+    medicalBmi.value = '';
+    medicalAllergy.value = '';
+    medicalBloodPressure.value = '';
+    medicalNotes.value = '';
+    currentlyEditingReservationId = null;
+}
+
+function completeTreatment() {
+    const therapistName = document.getElementById('therapist-name').value;
+    const additionalTreatment = document.getElementById('additional-treatment').value;
+    const treatmentFee = document.getElementById('treatment-fee').value;
+    const temperature = medicalTemperature.value;
+    const weight = medicalWeight.value;
+    const height = medicalHeight.value;
+    const bmi = medicalBmi.value;
+    const allergy = medicalAllergy.value;
+    const bloodPressure = medicalBloodPressure.value;
+    const notes = medicalNotes.value;
+
+    if (!therapistName) {
+        alert('Nama terapis tidak boleh kosong.');
+        return;
+    }
+    if (currentlyEditingReservationId) {
+        updateStatus(currentlyEditingReservationId, 'Selesai', therapistName, additionalTreatment, treatmentFee, temperature, weight, height, bmi, allergy, bloodPressure, notes);
+    }
+    hideTherapistModal();
+}
+
+// --- FUNGSI TIKET ---
+function showTicket(res) {
+    document.getElementById('ticket-rme').textContent = res.rme;
+    document.getElementById('ticket-name').textContent = res.patientName;
+    document.getElementById('ticket-treatment').textContent = res.treatments;
+    document.getElementById('ticket-schedule').textContent = `${formatDate(res.bookingDate)} @ ${res.bookingTime}`;
     
-    // Tampilkan modal
+    // Hitung nomor antrian yang benar berdasarkan jam dan urutan reservasi
+    const reservationsTodayAtTime = reservations.filter(r => 
+        r.bookingDate === res.bookingDate && 
+        r.bookingTime === res.bookingTime &&
+        new Date(r.timestamp) <= new Date(res.timestamp)
+    );
+    
+    document.getElementById('ticket-queue-number').textContent = `${res.bookingTime.split(':')[0]}-${String(reservationsTodayAtTime.length).padStart(2, '0')}`;
+    
+    // Tampilkan data medis jika ada
+    const medicalContainer = document.getElementById('ticket-medical-data');
+    const medicalDetails = document.getElementById('ticket-medical-details');
+    medicalDetails.innerHTML = '';
+
+    if (res.temperature || res.weight || res.height || res.allergy || res.bloodPressure || res.medicalNotes) {
+        medicalContainer.classList.remove('hidden');
+        let medicalHtml = '';
+        if (res.temperature) medicalHtml += `<p><strong>Suhu:</strong> ${res.temperature} °C</p>`;
+        if (res.weight) medicalHtml += `<p><strong>Berat:</strong> ${res.weight} kg</p>`;
+        if (res.height) medicalHtml += `<p><strong>Tinggi:</strong> ${res.height} cm</p>`;
+        if (res.bmi) medicalHtml += `<p><strong>BMI:</strong> ${res.bmi}</p>`;
+        if (res.allergy) medicalHtml += `<p><strong>Alergi:</strong> ${res.allergy}</p>`;
+        if (res.bloodPressure) medicalHtml += `<p><strong>Tekanan Darah:</strong> ${res.bloodPressure}</p>`;
+        if (res.medicalNotes) medicalHtml += `<p><strong>Catatan:</strong> ${res.medicalNotes}</p>`;
+        medicalDetails.innerHTML = medicalHtml;
+    } else {
+        medicalContainer.classList.add('hidden');
+    }
+    
+    // Ambil riwayat treatment
+    const patientHistory = reservations.filter(r => r.rme === res.rme && r.id !== res.id && r.status === 'Selesai');
+    
+    // Tampilkan riwayat di tiket
+    const historyContainer = document.getElementById('ticket-medical-history');
+    historyContainer.innerHTML = '';
+    
+    if (patientHistory.length > 0) {
+        let historyHtml = '<div class="border-t border-pink-200 pt-2 mt-2 text-xs">';
+        historyHtml += '<p class="font-semibold text-pink-700">Riwayat Treatment:</p>';
+        historyHtml += '<ul class="list-disc pl-5 mt-1 text-gray-600">';
+        patientHistory.slice(-3).forEach(h => {
+            historyHtml += `<li>${formatDate(h.bookingDate)}: ${h.treatments}</li>`;
+        });
+        historyHtml += '</ul></div>';
+        historyContainer.innerHTML = historyHtml;
+    }
+    
+    const qrContainer = document.getElementById('ticket-qrcode');
+    qrContainer.innerHTML = '';
+    // Generate QR Code dengan data reservasi
+    const qrData = `RME: ${res.rme}\nNama: ${res.patientName}\nTreatment: ${res.treatments}\nJadwal: ${res.bookingDate} ${res.bookingTime}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrData)}`;
+    const qrImage = document.createElement('img');
+    qrImage.src = qrCodeUrl;
+    qrContainer.appendChild(qrImage);
+
     document.getElementById('ticket-modal').classList.remove('hidden');
 }
 
@@ -1279,9 +1155,13 @@ function hideTicketModal() {
 }
 
 function downloadTicket() {
-    html2canvas(document.getElementById('ticket-content')).then(canvas => {
+    const ticketElement = document.getElementById('ticket-content');
+    html2canvas(ticketElement, { 
+        backgroundColor: '#ffffff',
+        scale: 2 // Higher scale for better quality
+    }).then(canvas => {
         const link = document.createElement('a');
-        link.download = 'nomor-antrian.png';
+        link.download = `antrian-${document.getElementById('ticket-rme').textContent}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
     });
@@ -1289,189 +1169,215 @@ function downloadTicket() {
 
 function printTicketPDF() {
     const { jsPDF } = window.jspdf;
-    html2canvas(document.getElementById('ticket-content')).then(canvas => {
+    const doc = new jsPDF();
+    
+    const ticketElement = document.getElementById('ticket-content');
+    
+    html2canvas(ticketElement, { 
+        backgroundColor: '#ffffff',
+        scale: 2
+    }).then(canvas => {
         const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a6'
-        });
-        
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const imgProps = doc.getImageProperties(imgData);
+        const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
         
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save('nomor-antrian.pdf');
+        doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        doc.save(`antrian-${document.getElementById('ticket-rme').textContent}.pdf`);
     });
 }
 
-function generateStats(period) {
-    const now = new Date();
-    let startDate, endDate, title;
+// --- FUNGSI STATISTIK ---
+async function generateStats(period) {
+    showLoading();
     
-    switch(period) {
-        case 'today':
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-            title = 'Hari Ini';
-            break;
-        case 'week':
-            const dayOfWeek = now.getDay();
-            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
-            endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 7);
-            title = 'Pekan Ini';
-            break;
-        case 'month':
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-            title = 'Bulan Ini';
-            break;
-        default:
-            return;
+    // Pastikan data selalu fresh dari server
+    await fetchInitialData();
+    
+    document.querySelectorAll('.stat-button').forEach(btn => btn.classList.remove('bg-pink-500', 'text-white'));
+    const activeBtn = Array.from(document.querySelectorAll('.stat-button')).find(btn => btn.textContent.toLowerCase().includes(period.replace('week','pekan').replace('month','bulan')));
+    if(activeBtn) activeBtn.classList.add('bg-pink-500', 'text-white');
+
+    const now = new Date();
+    let filteredData;
+
+    if (period === 'today') {
+        const todayStr = now.toISOString().split('T')[0];
+        filteredData = reservations.filter(r => r.bookingDate === todayStr);
+    } else if (period === 'week') {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        
+        filteredData = reservations.filter(r => {
+            const resDate = new Date(r.bookingDate);
+            return resDate >= startOfWeek && resDate <= endOfWeek;
+        });
+    } else { // month
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        filteredData = reservations.filter(r => {
+           const resDate = new Date(r.bookingDate);
+           return resDate.getFullYear() === year && resDate.getMonth() === month;
+        });
     }
     
-    // Filter reservasi berdasarkan periode
-    const periodReservations = reservations.filter(r => {
-        const reservationDate = new Date(r.bookingDate);
-        return reservationDate >= startDate && reservationDate < endDate && r.status !== 'Batal';
-    });
+    const totalReservations = filteredData.length;
+    const completed = filteredData.filter(r => r.status === 'Selesai').length;
+    const totalRevenue = filteredData.filter(r => r.status === 'Selesai' && r.fee)
+        .reduce((sum, r) => sum + (Number(r.fee) || 0), 0);
     
-    // Hitung statistik
-    const totalReservations = periodReservations.length;
-    const completed = periodReservations.filter(r => r.status === 'Selesai').length;
-    const inQueue = periodReservations.filter(r => r.status === 'Dalam Antrian').length;
-    const inTreatment = periodReservations.filter(r => r.status === 'Sedang Treatment').length;
+    // Hitung terapis favorit
+    const therapistCounts = filteredData
+        .filter(r => r.therapist && r.status === 'Selesai')
+        .reduce((acc, r) => {
+            acc[r.therapist] = (acc[r.therapist] || 0) + 1;
+            return acc;
+        }, {});
+    const topTherapist = Object.entries(therapistCounts).sort((a,b) => b[1] - a[1])[0];
     
-    // Hitung pendapatan (jika ada data fee)
-    const revenue = periodReservations
-        .filter(r => r.status === 'Selesai' && r.fee)
-        .reduce((sum, r) => sum + parseInt(r.fee || 0), 0);
+    // Hitung hari dan jam populer
+    const dayCounts = filteredData.reduce((acc, r) => {
+        const day = new Date(r.bookingDate).getDay();
+        const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        acc[dayNames[day]] = (acc[dayNames[day]] || 0) + 1;
+        return acc;
+    }, {});
+    const topDay = Object.entries(dayCounts).sort((a,b) => b[1] - a[1])[0];
     
-    // Kategori treatment populer
-    const categoryCounts = {};
-    periodReservations.forEach(r => {
-        if (r.category) {
-            categoryCounts[r.category] = (categoryCounts[r.category] || 0) + 1;
-        }
-    });
+    const timeCounts = filteredData.reduce((acc, r) => {
+        acc[r.bookingTime] = (acc[r.bookingTime] || 0) + 1;
+        return acc;
+    }, {});
+    const topTime = Object.entries(timeCounts).sort((a,b) => b[1] - a[1])[0];
     
-    const popularCategories = Object.entries(categoryCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-    
-    // Render statistik
+    const categoryCounts = filteredData.reduce((acc, r) => {
+        acc[r.category] = (acc[r.category] || 0) + 1;
+        return acc;
+    }, {});
+    const topCategory = Object.entries(categoryCounts).sort((a,b) => b[1] - a[1])[0];
+
     const statsContent = document.getElementById('stats-content');
     statsContent.innerHTML = `
-        <h3 class="text-xl font-bold text-pink-800 mb-4">Statistik ${title}</h3>
-        
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div class="bg-pink-50 rounded-xl p-4 text-center">
-                <div class="text-3xl font-bold text-pink-700">${totalReservations}</div>
-                <div class="text-sm text-pink-600">Total Reservasi</div>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-pink-100 p-4 rounded-xl text-center">
+                <p class="text-sm text-pink-700">Total Reservasi</p>
+                <p class="text-4xl font-bold text-pink-900">${totalReservations}</p>
             </div>
-            <div class="bg-green-50 rounded-xl p-4 text-center">
-                <div class="text-3xl font-bold text-green-700">${completed}</div>
-                <div class="text-sm text-green-600">Selesai</div>
-            </div>
-            <div class="bg-blue-50 rounded-xl p-4 text-center">
-                <div class="text-3xl font-bold text-blue-700">${inQueue}</div>
-                <div class="text-sm text-blue-600">Dalam Antrian</div>
-            </div>
-            <div class="bg-yellow-50 rounded-xl p-4 text-center">
-                <div class="text-3xl font-bold text-yellow-700">${inTreatment}</div>
-                <div class="text-sm text-yellow-600">Sedang Treatment</div>
+            <div class="bg-green-100 p-4 rounded-xl text-center">
+                <p class="text-sm text-green-700">Treatment Selesai</p>
+                <p class="text-4xl font-bold text-green-900">${completed}</p>
             </div>
         </div>
-        
-        ${revenue > 0 ? `
-        <div class="bg-purple-50 rounded-xl p-4 mb-6">
-            <div class="text-2xl font-bold text-purple-700 text-center">Rp ${revenue.toLocaleString('id-ID')}</div>
-            <div class="text-sm text-purple-600 text-center">Total Pendapatan</div>
+        <div class="bg-blue-100 p-4 rounded-xl text-center">
+            <p class="text-sm text-blue-700">Total Pendapatan</p>
+            <p class="text-3xl font-bold text-blue-900">Rp ${totalRevenue.toLocaleString('id-ID')}</p>
+        </div>
+        ${topTherapist ? `
+        <div class="bg-purple-100 p-4 rounded-xl">
+            <h4 class="font-bold text-purple-800 mb-2">Terapis Favorit</h4>
+            <p class="text-2xl font-semibold text-purple-900">${topTherapist[0]}</p>
+            <p class="text-sm text-purple-700">${topTherapist[1]} treatment</p>
         </div>
         ` : ''}
-        
-        ${popularCategories.length > 0 ? `
-        <div class="mb-6">
-            <h4 class="font-bold text-lg text-pink-700 mb-3">Kategori Treatment Populer</h4>
-            <div class="space-y-2">
-                ${popularCategories.map(([category, count]) => `
-                    <div class="flex justify-between items-center">
-                        <span>${category}</span>
-                        <span class="font-semibold">${count}</span>
-                    </div>
-                `).join('')}
-            </div>
+        ${topDay ? `
+        <div class="bg-yellow-100 p-4 rounded-xl">
+            <h4 class="font-bold text-yellow-800 mb-2">Hari Paling Ramai</h4>
+            <p class="text-2xl font-semibold text-yellow-900">${topDay[0]}</p>
+            <p class="text-sm text-yellow-700">${topDay[1]} kunjungan</p>
         </div>
         ` : ''}
-        
-        ${periodReservations.length > 0 ? `
-        <div>
-            <h4 class="font-bold text-lg text-pink-700 mb-3">Detail Reservasi</h4>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="bg-pink-100">
-                            <th class="p-2 text-left">Nama</th>
-                            <th class="p-2 text-left">Treatment</th>
-                            <th class="p-2 text-left">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${periodReservations.map(r => `
-                            <tr class="border-b border-pink-100">
-                                <td class="p-2">${r.patientName}</td>
-                                <td class="p-2">${Array.isArray(r.treatments) ? r.treatments.join(', ') : r.treatments}</td>
-                                <td class="p-2">
-                                    <span class="px-2 py-1 rounded-full text-xs ${
-                                        r.status === 'Selesai' ? 'bg-green-100 text-green-800' :
-                                        r.status === 'Sedang Treatment' ? 'bg-yellow-100 text-yellow-800' :
-                                        'bg-blue-100 text-blue-800'
-                                    }">${r.status}</span>
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
+        ${topTime ? `
+        <div class="bg-red-100 p-4 rounded-xl">
+            <h4 class="font-bold text-red-800 mb-2">Jam Paling Populer</h4>
+            <p class="text-2xl font-semibold text-red-900">${topTime[0]}</p>
+            <p class="text-sm text-red-700">${topTime[1]} kunjungan</p>
         </div>
-        ` : '<p class="text-center text-gray-500">Tidak ada data reservasi untuk periode ini.</p>'}
+        ` : ''}
+        <div class="bg-white p-4 rounded-xl border border-pink-200">
+             <h4 class="font-bold text-pink-800 mb-2">Rincian Kategori</h4>
+             ${Object.keys(categoryCounts).length > 0 ?
+                Object.entries(categoryCounts).map(([cat, count]) => `
+                <div class="flex justify-between items-center text-sm py-1">
+                    <span class="text-gray-600">${cat}</span>
+                    <span class="font-semibold text-pink-700">${count}</span>
+                </div>
+                `).join('')
+                : '<p class="text-sm text-gray-500">Belum ada data.</p>'
+            }
+        </div>
     `;
+    
+    hideLoading();
 }
 
+// --- FUNGSI EKSPOR PDF ---
 function exportToPDF() {
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
+    const doc = new jsPDF();
     
     // Judul
-    pdf.setFontSize(18);
-    pdf.setTextColor(64, 64, 64);
-    pdf.text('Laporan Statistik Klinik', 105, 15, { align: 'center' });
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Laporan Statistik Klinik', 105, 15, { align: 'center' });
     
-    // Tanggal
-    pdf.setFontSize(12);
-    pdf.setTextColor(128, 128, 128);
-    pdf.text(`Dibuat pada: ${new Date().toLocaleDateString('id-ID')}`, 105, 22, { align: 'center' });
+    // Periode
+    const activeBtn = document.querySelector('.stat-button.bg-pink-500');
+    const period = activeBtn ? activeBtn.textContent : 'Hari Ini';
+    doc.setFontSize(12);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Periode: ${period}`, 105, 22, { align: 'center' });
     
-    // Konten statistik
-    const statsContent = document.getElementById('stats-content');
-    const contentHtml = statsContent.innerHTML;
+    // Tanggal ekspor
+    const exportDate = new Date().toLocaleDateString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    doc.text(`Dibuat pada: ${exportDate}`, 105, 28, { align: 'center' });
     
-    // Sederhanakan HTML untuk konversi PDF (opsional - bisa menggunakan html2canvas juga)
-    pdf.setFontSize(10);
-    pdf.setTextColor(0, 0, 0);
+    // Data statistik
+    let yPosition = 40;
     
-    // Untuk demo, kita hanya menambahkan teks sederhana
-    pdf.text('Laporan statistik lengkap hanya tersedia dalam tampilan aplikasi.', 20, 40);
-    pdf.text('Gunakan fitur screenshot perangkat Anda untuk menyimpan laporan.', 20, 50);
+    // Ambil data dari tampilan
+    const statsElements = document.querySelectorAll('#stats-content > div');
+    statsElements.forEach((element, index) => {
+        if (yPosition > 250) {
+            doc.addPage();
+            yPosition = 20;
+        }
+        
+        const title = element.querySelector('h4')?.textContent || 
+                     element.querySelector('.text-sm')?.textContent || 
+                     `Statistik ${index + 1}`;
+        const value = element.querySelector('.text-2xl, .text-3xl, .text-4xl')?.textContent || 
+                     element.querySelector('.text-sm:not(.text-pink-700)')?.textContent || '';
+        
+        doc.setFontSize(14);
+        doc.setTextColor(40, 40, 40);
+        doc.text(title, 14, yPosition);
+        
+        doc.setFontSize(12);
+        doc.setTextColor(80, 80, 80);
+        doc.text(value, 14, yPosition + 7);
+        
+        yPosition += 15;
+    });
     
     // Simpan PDF
-    pdf.save('laporan-statistik.pdf');
+    doc.save(`Laporan-Klinik-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-// --- FUNGSI BANTUAN ---
+// --- FUNGSI BANTU ---
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
 function showLoading() {
     document.getElementById('loading-spinner').classList.remove('hidden');
 }
@@ -1480,32 +1386,6 @@ function hideLoading() {
     document.getElementById('loading-spinner').classList.add('hidden');
 }
 
-function setButtonLoading(button, isLoading) {
-    if (isLoading) {
-        button.classList.add('btn-loading');
-        button.disabled = true;
-        loadingButtons[button.id] = true;
-    } else {
-        button.classList.remove('btn-loading');
-        button.disabled = false;
-        delete loadingButtons[button.id];
-    }
-}
-
-// Fungsi untuk memformat angka sebagai Rupiah
-function formatRupiah(amount) {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0
-    }).format(amount);
-}
-
-// Fungsi untuk mendapatkan nama hari dalam Bahasa Indonesia
-function getIndonesianDayName(date) {
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    return days[date.getDay()];
-}
 </script>
 </body>
 </html>

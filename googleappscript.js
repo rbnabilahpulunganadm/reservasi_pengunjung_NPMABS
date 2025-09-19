@@ -7,6 +7,9 @@ const SPREADSHEET_ID = "1NuDpvUSqY7WpxSHz1CDTWEhfnUYbZRO3HIJxvThj45w";
 const RESERVATION_SHEET_NAME = "Reservasi";
 const CUSTOMER_SHEET_NAME = "Pelanggan";
 
+// Konstanta untuk Autocrat
+const AUTOCRAT_JOB_NAME = "API_Reservasi";
+
 function doGet(e) {
   try {
     const action = e.parameter.action;
@@ -50,8 +53,6 @@ function doPost(e) {
       return handleUpdateStatus(data);
     } else if (action === 'completeTreatment') {
       return handleCompleteTreatment(data);
-    } else if (action === 'createReservation') {
-      return createReservation(data);
     } else if (action === 'runAutocrat') {
       autoRunAutocrat();
       return ContentService
@@ -231,119 +232,6 @@ function getQueueData() {
     Logger.log(error.toString());
     return ContentService
       .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function createReservation(data) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    let reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    
-    // Jika sheet belum ada, buat sheet baru
-    if (!reservationSheet) {
-      setupSheets();
-      reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    }
-    
-    // Generate ID unik untuk reservasi
-    const reservationId = 'RES-' + new Date().getTime() + '-' + Math.floor(Math.random() * 1000);
-    
-    // Menambahkan data reservasi ke sheet "Reservasi"
-    const reservationHeaders = ['ID', 'Timestamp', 'RME', 'Nama Pemesan', 'Telepon', 'Instagram', 'Alamat', 'Nama Pasien', 'Tgl Lahir', 'Usia', 'Gender', 'Kategori', 'Treatments', 'Ada Keluhan', 'Detail Keluhan', 'Tgl Booking', 'Jam Booking', 'Status', 'Terapis', 'TreatmentTambahan', 'Tarif', 'Suhu', 'Berat', 'Tinggi', 'BMI', 'Alergi', 'Tekanan Darah', 'Catatan Medis'];
-    
-    // Cek jika header sudah ada
-    if (reservationSheet.getLastRow() === 0) {
-      reservationSheet.appendRow(reservationHeaders);
-    }
-    
-    const reservationValues = [
-      reservationId, 
-      new Date(), 
-      data.rme, 
-      data.bookerName, 
-      data.phone, 
-      data.instagram || '', 
-      data.address || '',
-      data.patientName, 
-      data.dob, 
-      data.age, 
-      data.gender, 
-      data.category, 
-      Array.isArray(data.treatments) ? data.treatments.join(', ') : data.treatments,
-      data.hasComplaint ? "Ya" : "Tidak", 
-      data.complaintText || '', 
-      data.bookingDate, 
-      data.bookingTime, 
-      data.status || 'Dalam Antrian', 
-      '', // Terapis (kosong dulu)
-      '', // TreatmentTambahan (kosong dulu)
-      '', // Tarif (kosong dulu)
-      '', // Suhu (kosong dulu)
-      '', // Berat (kosong dulu)
-      '', // Tinggi (kosong dulu)
-      '', // BMI (kosong dulu)
-      '', // Alergi (kosong dulu)
-      '', // Tekanan Darah (kosong dulu)
-      ''  // Catatan Medis (kosong dulu)
-    ];
-    
-    reservationSheet.appendRow(reservationValues);
-
-    // Cek dan tambahkan data pelanggan baru ke sheet "Pelanggan"
-    let customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    if (!customerSheet) {
-      setupSheets();
-      customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    }
-    
-    const customerHeaders = ['RME', 'Nama Pasien', 'Nama Pemesan', 'Telepon', 'Instagram', 'Alamat', 'Tgl Lahir', 'Gender'];
-    
-    // Cek jika header sudah ada di sheet pelanggan
-    if (customerSheet.getLastRow() === 0) {
-      customerSheet.appendRow(customerHeaders);
-    }
-
-    // Cari apakah RME sudah ada
-    const rmeColumn = customerSheet.getRange('A:A').getValues();
-    let rmeExists = false;
-    for (let i = 0; i < rmeColumn.length; i++) {
-      if (rmeColumn[i][0] == data.rme) {
-        rmeExists = true;
-        break;
-      }
-    }
-
-    if (!rmeExists) {
-      const customerValues = [
-        data.rme, 
-        data.patientName, 
-        data.bookerName, 
-        data.phone, 
-        data.instagram || '', 
-        data.address || '', 
-        data.dob, 
-        data.gender
-      ];
-      customerSheet.appendRow(customerValues);
-    }
-    
-    // Kembalikan data reservasi yang berhasil disimpan
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: true, 
-        reservationId: reservationId,
-        message: "Reservasi berhasil dibuat"
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: false, 
-        message: error.toString() 
-      }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
