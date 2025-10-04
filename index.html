@@ -5,808 +5,310 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservasi - Klinik Nabilah Pulungan</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <!-- [BARU] Menambahkan Chart.js untuk grafik statistik -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #FDF2F8; }
-        .font-mplus { font-family: 'M PLUS Rounded 1c', sans-serif; }
-        .main-container { max-width: 500px; margin: 0 auto; min-height: 100vh; background-color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
-        .navbar { box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
-        .nav-item.active svg, .nav-item.active span { color: #DB2777; /* Pink-700 */ }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #FDF2F8; }
-        ::-webkit-scrollbar-thumb { background: #F472B6; border-radius: 10px; }
-        .page { display: none; }
-        .page.active { display: block; }
-        .form-input, .form-select, .form-textarea { border-width: 1px; border-color: #FBCFE8; transition: all 0.3s ease; }
-        .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #DB2777; box-shadow: 0 0 0 2px #FCE7F3; }
-        .btn-primary { background-color: #EC4899; color: white; transition: background-color 0.3s ease; }
-        .btn-primary:hover { background-color: #DB2777; }
-        .btn-secondary { background-color: #FCE7F3; color: #DB2777; }
-        .btn-loading { position: relative; color: transparent !important; }
-        .btn-loading::after { content: ''; position: absolute; width: 20px; height: 20px; top: 50%; left: 50%; margin: -10px 0 0 -10px; border: 2px solid #ffffff; border-radius: 50%; border-top-color: transparent; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .stat-card { background-color: #FFF7FA; border: 1px solid #FBCFE8; }
+        body { font-family: 'Poppins', sans-serif; background-color: #FFF8F9; }
+        .theme-pink { color: #FF6B8A; }
+        .bg-theme-pink { background-color: #FF6B8A; }
+        .border-theme-pink { border-color: #FF6B8A; }
+        .active-tab { border-bottom: 3px solid #FF6B8A; color: #FF6B8A; font-weight: 600; }
+        .tab { border-bottom: 3px solid transparent; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #FFF0F5; }
+        ::-webkit-scrollbar-thumb { background: #FFC0CB; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #FF6B8A; }
+        #opening-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #FFF8F9; z-index: 100; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 1s ease-out; }
+        @keyframes blossom-fall { 0% { transform: translateY(-100%) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
+        .petal { position: absolute; top: -10%; background-color: #FFB7C5; border-radius: 50% 0; width: 20px; height: 20px; animation: blossom-fall 7s linear infinite; }
+        @keyframes logo-fade-in { 0% { opacity: 0; transform: scale(0.8); } 100% { opacity: 1; transform: scale(1); } }
+        #opening-animation .logo { animation: logo-fade-in 2s ease-in-out; }
+        .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #FF6B8A; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .calendar-day { aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; font-size: 0.8rem; }
+        .calendar-day.other-month { color: #cbd5e0; }
+        .calendar-day .day-number { font-weight: 600; }
+        .calendar-day .res-count { font-size: 0.7rem; margin-top: 2px; }
     </style>
 </head>
-<body class="bg-pink-50">
+<body class="overscroll-none">
 
-<div id="app-container" class="main-container relative pb-20">
-
-    <!-- Loading Spinner -->
-    <div id="loading-spinner" class="hidden fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-pink-500"></div>
-    </div>
-
-    <!-- Modal Keamanan (Password) -->
-    <div id="password-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm text-center">
-            <i class="fas fa-lock text-4xl text-yellow-500 mb-3"></i>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Akses Terbatas</h3>
-            <p class="text-gray-600 mb-4">Silakan masukkan sandi untuk melanjutkan.</p>
-            <input type="password" id="password-input" class="w-full p-3 text-center rounded-lg form-input text-lg tracking-widest" placeholder="******">
-            <p id="password-error" class="hidden text-red-500 text-sm mt-2">Sandi salah. Coba lagi.</p>
-            <div class="flex gap-3 mt-4">
-                <button onclick="hidePasswordModal()" class="w-full py-2 rounded-lg btn-secondary font-semibold">Batal</button>
-                <button onclick="checkPassword()" class="w-full py-2 rounded-lg btn-primary font-semibold">Masuk</button>
-            </div>
+    <div id="opening-animation">
+        <div class="petal" style="left: 10%; animation-delay: 0s;"></div><div class="petal" style="left: 20%; animation-delay: 2s; width: 15px; height: 15px;"></div><div class="petal" style="left: 30%; animation-delay: 1s;"></div><div class="petal" style="left: 40%; animation-delay: 4s; width: 10px; height: 10px;"></div><div class="petal" style="left: 50%; animation-delay: 0.5s;"></div><div class="petal" style="left: 60%; animation-delay: 3s;"></div><div class="petal" style="left: 70%; animation-delay: 1.5s; width: 18px; height: 18px;"></div><div class="petal" style="left: 80%; animation-delay: 5s;"></div>
+        <div class="logo text-center">
+            <h1 class="text-4xl font-bold theme-pink">Klinik Nabilah Pulungan</h1>
+            <p class="text-gray-500 mt-2">Reservasi Online</p>
         </div>
     </div>
 
-    <!-- Modal Riwayat Pasien -->
-    <div id="history-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 p-4">
-        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-pink-800">Riwayat Kunjungan Pasien</h3>
-                <button onclick="hideHistoryModal()" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+    <div id="main-content" class="hidden">
+        <div class="container mx-auto max-w-lg p-4 pb-24">
+            <header id="main-header" class="text-center my-4"></header>
+            <div id="search-container" class="mb-4 relative hidden">
+                <input type="text" id="search-patient-input" placeholder="Cari pasien (RME, Nama...)" class="w-full p-3 pl-10 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300">
+                <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
+                <div id="search-results" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden"></div>
             </div>
-            <div id="history-content" class="flex-grow overflow-y-auto space-y-3 pr-2"></div>
+            <main id="app-content"></main>
         </div>
-    </div>
-    
-    <!-- Modal Selesaikan Treatment -->
-    <div id="therapist-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-bold text-pink-800 mb-4">Selesaikan Treatment</h3>
-            <p class="text-gray-600 mb-4">Masukkan data terapis dan pemeriksaan medis.</p>
-            <div class="space-y-4">
-                <div>
-                    <label for="therapist-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Terapis *</label>
-                    <input type="text" id="therapist-name" class="w-full p-3 rounded-lg form-input" required>
-                </div>
-                <div>
-                    <label for="additional-treatment" class="block text-sm font-medium text-gray-700 mb-1">Treatment Tambahan</label>
-                    <input type="text" id="additional-treatment" class="w-full p-3 rounded-lg form-input">
-                </div>
-                <div>
-                    <label for="treatment-fee" class="block text-sm font-medium text-gray-700 mb-1">Tarif Treatment (Rp)</label>
-                    <input type="number" id="treatment-fee" class="w-full p-3 rounded-lg form-input">
-                </div>
-                <h4 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2 mt-2">Pemeriksaan Medis</h4>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label for="medical-temperature" class="block text-sm font-medium text-gray-700 mb-1">Suhu (°C)</label>
-                        <input type="number" id="medical-temperature" step="0.1" class="w-full p-3 rounded-lg form-input">
-                    </div>
-                    <div>
-                        <label for="medical-weight" class="block text-sm font-medium text-gray-700 mb-1">Berat (kg)</label>
-                        <input type="number" id="medical-weight" step="0.1" class="w-full p-3 rounded-lg form-input">
-                    </div>
-                    <div>
-                        <label for="medical-height" class="block text-sm font-medium text-gray-700 mb-1">Tinggi (cm)</label>
-                        <input type="number" id="medical-height" step="0.1" class="w-full p-3 rounded-lg form-input">
-                    </div>
-                    <div>
-                        <label for="medical-bmi" class="block text-sm font-medium text-gray-700 mb-1">BMI</label>
-                        <input type="text" id="medical-bmi" readonly class="w-full p-3 rounded-lg form-input bg-gray-100">
-                    </div>
-                </div>
-                 <div>
-                    <label for="medical-blood-pressure" class="block text-sm font-medium text-gray-700 mb-1">Tekanan Darah</label>
-                    <input type="text" id="medical-blood-pressure" placeholder="120/80 mmHg" class="w-full p-3 rounded-lg form-input">
-                </div>
-                <div>
-                    <label for="medical-allergy" class="block text-sm font-medium text-gray-700 mb-1">Riwayat Alergi</label>
-                    <input type="text" id="medical-allergy" class="w-full p-3 rounded-lg form-input">
-                </div>
-                <div>
-                    <label for="medical-notes" class="block text-sm font-medium text-gray-700 mb-1">Catatan Medis</label>
-                    <textarea id="medical-notes" rows="2" class="w-full p-3 rounded-lg form-textarea"></textarea>
-                </div>
+
+        <div id="booking-cart-fab" class="fixed bottom-24 right-5 z-20 hidden">
+             <button onclick="showReservationForm()" class="bg-theme-pink text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center transition-transform hover:scale-110">
+                 <i class="fas fa-calendar-check text-2xl"></i>
+                 <span id="cart-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-xs rounded-full px-2 py-1">0</span>
+             </button>
+         </div>
+
+        <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-gray-200 shadow-md">
+            <div class="flex justify-around">
+                <button data-tab="home" class="nav-tab active-tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-home text-xl"></i><span class="block text-xs mt-1">Home</span></button>
+                <button data-tab="reservations" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-list-alt text-xl"></i><span class="block text-xs mt-1">Reservasi</span></button>
+                <button data-tab="rekap" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-chart-pie text-xl"></i><span class="block text-xs mt-1">Laporan</span></button>
+                <button data-tab="management" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-cogs text-xl"></i><span class="block text-xs mt-1">Manajemen</span></button>
+                <button data-tab="guide" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-book text-xl"></i><span class="block text-xs mt-1">Panduan</span></button>
             </div>
-            <div class="flex justify-end gap-3 mt-6">
-                <button onclick="hideTherapistModal()" class="py-2 px-4 rounded-lg btn-secondary font-semibold">Batal</button>
-                <button onclick="completeTreatment()" class="py-2 px-4 rounded-lg btn-primary font-semibold">Selesaikan</button>
-            </div>
-        </div>
+        </nav>
     </div>
 
-    <!-- Modal Tiket Antrian -->
-    <div id="ticket-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
-        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
-            <h3 class="text-2xl font-bold text-center text-pink-800 mb-2 font-mplus">Reservasi Berhasil!</h3>
-            <p class="text-center text-gray-500 mb-4">Silakan simpan nomor antrian ini.</p>
-            <div id="ticket-content" class="border-2 border-dashed border-pink-300 rounded-xl p-4 mb-4 bg-white">
-                <div class="text-center">
-                    <h4 class="font-mplus text-pink-700 font-bold text-lg">Klinik Nabilah Pulungan</h4>
-                    <p class="text-xs text-pink-500">Bukti Reservasi Treatment</p>
-                </div>
-                <p class="text-center text-sm text-gray-700 my-2">No. RME: <span id="ticket-rme" class="font-bold"></span></p>
-                <div class="border-t border-b border-pink-200 py-2 my-2 text-sm space-y-1">
-                    <p><strong>Nama:</strong> <span id="ticket-name"></span></p>
-                    <p><strong>Treatment:</strong> <span id="ticket-treatment"></span></p>
-                    <p><strong>Jadwal:</strong> <span id="ticket-schedule"></span></p>
-                </div>
-                <p class="text-center font-bold text-4xl text-pink-600 font-mplus mt-2" id="ticket-queue-number"></p>
-                <p class="text-center text-xs text-gray-400 mt-2">Terima kasih atas kunjungan Anda!</p>
-            </div>
-            <div class="flex flex-col gap-3">
-                <button onclick="downloadTicket()" class="w-full py-3 px-4 rounded-lg btn-primary font-semibold flex items-center justify-center gap-2"><i class="fas fa-download"></i> Unduh Nomor Antrian</button>
-                <button onclick="hideTicketModal()" class="w-full py-3 px-4 rounded-lg btn-secondary font-semibold">Tutup</button>
-            </div>
-        </div>
-    </div>
+    <div id="modals-container"></div>
+    <div id="global-loader" class="fixed inset-0 z-50 bg-black bg-opacity-30 items-center justify-center hidden"><div class="loader"></div></div>
 
-    <!-- PAGES -->
-    <main class="p-4 sm:p-6">
-        <!-- PAGE 1: FORM RESERVASI -->
-        <div id="page-form" class="page active">
-            <header class="text-center mb-6">
-                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Reservasi Treatment</h1>
-                <p class="text-gray-500">Isi data untuk jadwal treatment Anda.</p>
-            </header>
-            
-            <div class="mb-4">
-                 <div class="relative">
-                    <input type="text" id="search-customer" placeholder="Cari Pasien (Nama/HP/IG/RME)" class="w-full p-3 pl-10 rounded-lg form-input">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                </div>
-                <div id="search-results" class="hidden bg-white border border-pink-200 rounded-lg mt-1 max-h-40 overflow-y-auto"></div>
-            </div>
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_FtGrjkFKgfBoBsNr5QVjNR8j3BbefSQXIz_b7CepMFYDMs6W1Qt9SdmHn_ISNW89/exec'; 
+        let state = {
+            activeTab: 'home', activeHomeTab: 'treatments', treatmentFilter: 'All',
+            selectedItems: [],
+            data: { treatments: [], products: [], searchResults: [] },
+            rekapData: null, currentCalendarDate: new Date()
+        };
 
-            <form id="reservation-form" class="space-y-4" onsubmit="handleFormSubmit(event)">
-                <h3 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2">Data Pemesan</h3>
-                <input type="hidden" id="rme">
-                <div>
-                    <label for="booker-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Pemesan</label>
-                    <input type="text" id="booker-name" class="w-full p-3 rounded-lg form-input" required>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">No. Telepon/WA</label>
-                        <input type="tel" id="phone" class="w-full p-3 rounded-lg form-input" required>
-                    </div>
-                    <div>
-                        <label for="instagram" class="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
-                        <input type="text" id="instagram" class="w-full p-3 rounded-lg form-input">
-                    </div>
-                </div>
-                <div>
-                    <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Alamat Domisili</label>
-                    <textarea id="address" rows="2" class="w-full p-3 rounded-lg form-textarea"></textarea>
-                </div>
-                
-                <div class="flex justify-between items-center border-b-2 border-pink-200 pt-4 pb-2">
-                     <h3 class="font-bold text-lg text-pink-700">Data Pasien</h3>
-                     <div id="history-button-container"></div>
-                </div>
-
-                <div>
-                    <label for="patient-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Pasien</label>
-                    <input type="text" id="patient-name" class="w-full p-3 rounded-lg form-input" required>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Lahir</label>
-                        <input type="date" id="dob" class="w-full p-3 rounded-lg form-input" required onchange="calculateAge()">
-                    </div>
-                    <div>
-                        <label for="age" class="block text-sm font-medium text-gray-700 mb-1">Usia</label>
-                        <input type="text" id="age" class="w-full p-3 rounded-lg form-input bg-pink-50" readonly>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label>
-                    <div class="flex gap-4">
-                        <label class="flex items-center"><input type="radio" name="gender" value="Perempuan" class="mr-2 text-pink-500 focus:ring-pink-500" checked> Perempuan</label>
-                        <label class="flex items-center"><input type="radio" name="gender" value="Laki-laki" class="mr-2 text-pink-500 focus:ring-pink-500"> Laki-laki</label>
-                    </div>
-                </div>
-
-                <h3 class="font-bold text-lg text-pink-700 border-b-2 border-pink-200 pb-2 pt-4">Detail Treatment</h3>
-                <div>
-                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Kategori Treatment</label>
-                    <select id="category" class="w-full p-3 rounded-lg form-select" onchange="handleCategoryChange()">
-                        <option>Baby/Kid Spa</option><option>Ladies Spa</option><option>Mom/Bumil/Nifas Spa</option><option>Tindik dr Evoo</option><option>ANC/Senam</option><option>Umum</option><option>Partus/Melahirkan</option><option>Homecare</option><option value="other">Lainnya...</option>
-                    </select>
-                    <input type="text" id="category-other" class="hidden w-full p-3 mt-2 rounded-lg form-input" placeholder="Ketik kategori lainnya">
-                </div>
-
-                <div id="treatments-container" class="space-y-2">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Treatment/Spa</label>
-                        <input type="text" name="treatment" class="w-full p-3 rounded-lg form-input" required>
-                    </div>
-                </div>
-                <button type="button" onclick="addTreatmentField()" class="text-sm text-pink-600 font-semibold hover:underline">+ Tambah Treatment</button>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Ada Keluhan?</label>
-                    <div class="flex gap-4">
-                        <label class="flex items-center"><input type="radio" name="complaint_toggle" value="ya" class="mr-2 text-pink-500 focus:ring-pink-500" onchange="handleComplaintToggle()"> Ya</label>
-                        <label class="flex items-center"><input type="radio" name="complaint_toggle" value="tidak" class="mr-2 text-pink-500 focus:ring-pink-500" checked onchange="handleComplaintToggle()"> Tidak</label>
-                    </div>
-                    <textarea id="complaint-text" rows="2" class="hidden w-full p-3 mt-2 rounded-lg form-textarea" placeholder="Sebutkan keluhan Anda"></textarea>
-                </div>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label for="booking-date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Datang</label>
-                        <input type="date" id="booking-date" class="w-full p-3 rounded-lg form-input" required onchange="populateTimeSlots()">
-                    </div>
-                    <div>
-                        <label for="booking-time" class="block text-sm font-medium text-gray-700 mb-1">Jam</label>
-                        <select id="booking-time" class="w-full p-3 rounded-lg form-select" required></select>
-                    </div>
-                </div>
-                <button type="submit" class="w-full mt-6 py-4 rounded-xl btn-primary font-bold text-lg"><i class="fas fa-calendar-check mr-2"></i> Buat Reservasi</button>
-            </form>
-        </div>
-
-        <!-- PAGE 2: DAFTAR RESERVASI -->
-        <div id="page-list" class="page">
-            <header class="mb-6">
-                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Daftar Reservasi</h1>
-                <p class="text-gray-500 mt-1">Kelola semua jadwal treatment pasien.</p>
-                <div class="flex flex-wrap gap-2 my-4">
-                    <select id="filter-status" class="p-2 rounded-lg form-select flex-1 min-w-[120px]" onchange="renderReservationList()">
-                        <option value="all">Semua Status</option><option value="Dalam Antrian">Dalam Antrian</option><option value="Sedang Treatment">Sedang Treatment</option><option value="Selesai">Selesai</option><option value="Batal">Batal</option>
-                    </select>
-                    <select id="sort-by" class="p-2 rounded-lg form-select flex-1 min-w-[120px]" onchange="renderReservationList()">
-                        <option value="timestamp-desc">Terbaru</option><option value="timestamp-asc">Terlama</option><option value="name-asc">Nama A-Z</option><option value="name-desc">Nama Z-A</option>
-                    </select>
-                </div>
-                <div class="relative">
-                    <input type="text" id="search-reservations" placeholder="Cari di daftar reservasi..." class="w-full p-3 pl-10 rounded-lg form-input" oninput="renderReservationList()">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                </div>
-            </header>
-            <div id="reservation-list" class="space-y-4"></div>
-        </div>
-
-        <!-- PAGE 3: LAPORAN STATISTIK (REVISI) -->
-        <div id="page-stats" class="page">
-            <header class="mb-6">
-                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Laporan Cerdas</h1>
-                <p class="text-gray-500">Analisis & pantau performa klinik Anda.</p>
-            </header>
-            <div class="flex justify-center gap-2 mb-6">
-                <button onclick="generateStats('today')" class="stat-button flex-1 py-2 px-3 bg-pink-100 text-pink-700 rounded-lg font-semibold">Hari Ini</button>
-                <button onclick="generateStats('week')" class="stat-button flex-1 py-2 px-3 bg-pink-100 text-pink-700 rounded-lg font-semibold">7 Hari</button>
-                <button onclick="generateStats('month')" class="stat-button flex-1 py-2 px-3 bg-pink-100 text-pink-700 rounded-lg font-semibold">30 Hari</button>
-            </div>
-            <div id="stats-content" class="space-y-6">
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="stat-card p-4 rounded-xl text-center">
-                        <div id="stats-total-reservations" class="text-3xl font-bold text-pink-700">0</div>
-                        <div class="text-sm text-pink-600">Total Kunjungan</div>
-                    </div>
-                    <div class="stat-card p-4 rounded-xl text-center">
-                        <div id="stats-total-revenue" class="text-3xl font-bold text-pink-700">0</div>
-                        <div class="text-sm text-pink-600">Total Pendapatan</div>
-                    </div>
-                </div>
-                <div class="stat-card p-4 rounded-xl">
-                    <h4 class="font-bold text-lg text-pink-700 mb-3">Kategori Treatment Terpopuler</h4>
-                    <canvas id="category-chart"></canvas>
-                </div>
-                <div class="stat-card p-4 rounded-xl">
-                    <h4 class="font-bold text-lg text-pink-700 mb-3">Kunjungan Setiap Hari</h4>
-                    <canvas id="daily-chart"></canvas>
-                </div>
-                <div class="stat-card p-4 rounded-xl bg-teal-50 border-teal-200">
-                    <h4 class="font-bold text-lg text-teal-700 mb-2 flex items-center gap-2"><i class="fas fa-lightbulb"></i> Saran Pintar</h4>
-                    <p id="smart-suggestion" class="text-teal-800 text-sm">Pilih periode laporan untuk melihat saran.</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- PAGE 4: PANDUAN -->
-        <div id="page-guide" class="page">
-             <header class="mb-6">
-                <h1 class="text-3xl font-bold text-pink-800 font-mplus">Panduan Aplikasi</h1>
-                <p class="text-gray-500">Cara menggunakan aplikasi reservasi.</p>
-            </header>
-            <div class="space-y-6 text-gray-700">
-                <div>
-                    <h3 class="font-bold text-lg text-pink-600"><i class="fas fa-user-plus w-6"></i>Pasien Baru & RME Otomatis</h3>
-                    <p class="mt-1 ml-6">Untuk pasien baru, cukup kosongi pencarian dan isi data seperti biasa. Sistem akan otomatis membuatkan Nomor Rekam Medis (RME) baru untuk pasien tersebut.</p>
-                </div>
-                <div>
-                    <h3 class="font-bold text-lg text-pink-600"><i class="fas fa-search w-6"></i>Pasien Lama & Riwayat</h3>
-                    <p class="mt-1 ml-6">Gunakan kolom 'Cari Pasien' untuk data pasien lama. Setelah dipilih, data akan terisi otomatis dan tombol 'Lihat Riwayat' akan muncul untuk melihat histori treatment sebelumnya.</p>
-                </div>
-                <div>
-                    <h3 class="font-bold text-lg text-pink-600"><i class="fas fa-lock w-6"></i>Keamanan Akses</h3>
-                    <p class="mt-1 ml-6">Tab 'Daftar' dan 'Laporan' dilindungi kata sandi. Masukkan sandi <strong class="font-mono">112211</strong> untuk mengakses halaman tersebut.</p>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- BOTTOM NAVIGATION -->
-    <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] bg-white/80 backdrop-blur-sm border-t border-pink-100 flex justify-around navbar">
-        <button onclick="showPage('page-form')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600 active"><i class="fas fa-plus-circle text-2xl"></i><span class="block text-xs font-medium">Reservasi</span></button>
-        <button onclick="showPage('page-list')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600"><i class="fas fa-list-alt text-2xl"></i><span class="block text-xs font-medium">Daftar</span></button>
-        <button onclick="showPage('page-stats')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600"><i class="fas fa-chart-pie text-2xl"></i><span class="block text-xs font-medium">Laporan</span></button>
-        <button onclick="showPage('page-guide')" class="nav-item flex-1 py-3 text-center text-gray-500 hover:text-pink-600"><i class="fas fa-book text-2xl"></i><span class="block text-xs font-medium">Panduan</span></button>
-    </nav>
-</div>
-
-<script>
-// --- KONFIGURASI ---
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzRRU-G4QSW1bLw9QdCV53imLoZ2US1w3mXZydT9Ck8g31wsemL-5vpKIxCteCkXLm8YA/exec'; 
-
-// --- STATE APLIKASI ---
-let reservations = [];
-let customers = []; 
-let treatmentCounter = 1;
-let currentlyEditingReservationId = null;
-let isAuthenticated = false;
-let pageToShowAfterAuth = '';
-let selectedCustomerRME = null;
-let categoryChartInstance = null;
-let dailyChartInstance = null;
-
-// --- FUNGSI UTAMA ---
-document.addEventListener('DOMContentLoaded', () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('dob').max = today;
-    document.getElementById('booking-date').min = today;
-    document.getElementById('booking-date').value = today;
-    
-    showPage('page-form');
-    fetchInitialData();
-});
-
-async function fetchInitialData() {
-    showLoading();
-    try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getData`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-
-        if (data && data.reservations && data.customers) {
-            reservations = data.reservations.map(r => ({
-                ...r,
-                bookingDate: r['Tgl Booking'] ? new Date(r['Tgl Booking']).toISOString().split('T')[0] : '',
-            }));
-            customers = data.customers;
-        }
-    } catch (error) {
-        console.error("Gagal mengambil data:", error);
-        alert("Tidak dapat memuat data dari server.");
-    } finally {
-        populateTimeSlots();
-        renderReservationList();
-        hideLoading();
-    }
-}
-
-// --- FUNGSI KEAMANAN & NAVIGASI ---
-function showPage(pageId, forceShow = false) {
-    if (!forceShow && (pageId === 'page-list' || pageId === 'page-stats') && !isAuthenticated) {
-        showPasswordModal(pageId);
-        return;
-    }
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(pageId).classList.add('active');
-    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    const navIndex = ['page-form', 'page-list', 'page-stats', 'page-guide'].indexOf(pageId);
-    if(navIndex !== -1) document.querySelector(`.nav-item:nth-child(${navIndex + 1})`).classList.add('active');
-}
-function showPasswordModal(target) {
-    pageToShowAfterAuth = target;
-    document.getElementById('password-modal').classList.remove('hidden');
-    document.getElementById('password-input').focus();
-}
-function hidePasswordModal() {
-    document.getElementById('password-modal').classList.add('hidden');
-    document.getElementById('password-input').value = '';
-    document.getElementById('password-error').classList.add('hidden');
-}
-function checkPassword() {
-    if (document.getElementById('password-input').value === '112211') {
-        isAuthenticated = true;
-        hidePasswordModal();
-        showPage(pageToShowAfterAuth, true);
-    } else {
-        document.getElementById('password-error').classList.remove('hidden');
-    }
-}
-
-// --- FUNGSI FORM DAN DATA PASIEN ---
-function handleCustomerSearch() {
-    const query = document.getElementById('search-customer').value.toLowerCase().trim();
-    const resultsContainer = document.getElementById('search-results');
-    if (!query) {
-        resultsContainer.innerHTML = '';
-        resultsContainer.classList.add('hidden');
-        return;
-    }
-    const results = customers.filter(c => Object.values(c).some(val => String(val).toLowerCase().includes(query)));
-    resultsContainer.innerHTML = '';
-    if (results.length > 0) {
-        results.forEach(c => {
-            const item = document.createElement('div');
-            item.className = 'p-3 border-b border-pink-100 hover:bg-pink-50 cursor-pointer';
-            item.innerHTML = `<div class="font-semibold">${c['Nama Pasien']}</div><div class="text-sm text-gray-600">${c['Telepon']} | RME: ${c.RME || '-'}</div>`;
-            item.onclick = () => { fillCustomerData(c); resultsContainer.classList.add('hidden'); };
-            resultsContainer.appendChild(item);
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const openingScreen = document.getElementById('opening-animation');
+                openingScreen.style.opacity = '0';
+                setTimeout(() => {
+                    openingScreen.style.display = 'none';
+                    document.getElementById('main-content').classList.remove('hidden');
+                }, 1000);
+            }, 3000);
+            setupEventListeners();
+            navigateTo('home');
         });
-    } else {
-        resultsContainer.innerHTML = '<div class="p-3 text-gray-500 text-center">Tidak ditemukan pasien</div>';
-    }
-    resultsContainer.classList.remove('hidden');
-}
 
-function fillCustomerData(customer) {
-    document.getElementById('rme').value = customer.RME || '';
-    document.getElementById('booker-name').value = customer['Nama Pemesan'];
-    document.getElementById('phone').value = customer.Telepon;
-    document.getElementById('instagram').value = customer.Instagram || '';
-    document.getElementById('address').value = customer.Alamat || '';
-    document.getElementById('patient-name').value = customer['Nama Pasien'];
-    const dob = customer['Tgl Lahir'] ? new Date(customer['Tgl Lahir']).toISOString().split('T')[0] : '';
-    document.getElementById('dob').value = dob;
-    document.querySelector(`input[name="gender"][value="${customer.Gender}"]`).checked = true;
-    calculateAge();
-    selectedCustomerRME = customer.RME;
-    document.getElementById('history-button-container').innerHTML = `<button type="button" onclick="fetchAndShowHistory()" class="text-sm py-1 px-3 rounded-lg bg-pink-100 text-pink-700 font-semibold hover:bg-pink-200">Lihat Riwayat</button>`;
-}
-
-async function fetchAndShowHistory() {
-    if (!selectedCustomerRME) return;
-    showLoading();
-    try {
-        const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getPatientHistory&rme=${selectedCustomerRME}`);
-        const historyData = await response.json();
-        const container = document.getElementById('history-content');
-        container.innerHTML = ''; 
-        if (!historyData || historyData.length === 0) {
-            container.innerHTML = '<p class="text-gray-500 text-center">Tidak ada riwayat.</p>';
-        } else {
-            historyData
-                .sort((a,b) => new Date(b['Tgl Booking']) - new Date(a['Tgl Booking']))
-                .forEach(v => {
-                    const el = document.createElement('div');
-                    el.className = 'p-3 border rounded-lg bg-pink-50 text-sm';
-                    el.innerHTML = `<p class="font-bold text-pink-700">${new Date(v['Tgl Booking']).toLocaleDateString('id-ID', {day:'2-digit', month:'long', year:'numeric'})}</p>
-                                    <p><strong>Treatment:</strong> ${v.Treatments || '-'}</p>
-                                    ${v['Detail Keluhan'] ? `<p><strong>Keluhan:</strong> ${v['Detail Keluhan']}</p>` : ''}
-                                    ${v.Terapis ? `<p><strong>Terapis:</strong> ${v.Terapis}</p>` : ''}
-                                    ${v['Catatan Medis'] ? `<p><strong>Catatan:</strong> ${v['Catatan Medis']}</p>` : ''}`;
-                    container.appendChild(el);
+        function setupEventListeners() {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.addEventListener('click', () => navigateTo(tab.dataset.tab)));
+            document.getElementById('search-patient-input').addEventListener('input', handleSearch);
+            // PERBAIKAN: Listener untuk memilih pasien dari hasil pencarian
+            document.getElementById('search-results').addEventListener('click', (e) => {
+                const target = e.target.closest('.search-result-item');
+                if (target && target.dataset.index) {
+                    selectPatientAndFillForm(target.dataset.index);
+                }
             });
         }
-        showHistoryModal();
-    } catch (e) {
-        alert("Gagal memuat riwayat pasien.");
-    } finally {
-        hideLoading();
-    }
-}
-
-// [REVISI] Perhitungan usia lebih akurat
-function calculateAge() {
-    const dobInput = document.getElementById('dob');
-    if (!dobInput.value) return;
-
-    const dob = new Date(dobInput.value);
-    const today = new Date();
-    
-    let years = today.getFullYear() - dob.getFullYear();
-    let months = today.getMonth() - dob.getMonth();
-    let days = today.getDate() - dob.getDate();
-
-    if (days < 0) {
-        months--;
-        days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-    }
-    if (months < 0) {
-        years--;
-        months += 12;
-    }
-
-    let weeks = Math.floor(days / 7);
-    days = days % 7;
-
-    let ageString = "";
-    if (years > 0) ageString = `${years} Thn, ${months} Bln, ${days} Hari`;
-    else if (months > 0) ageString = `${months} Bln, ${weeks} Mgg, ${days} Hari`;
-    else if (weeks > 0) ageString = `${weeks} Mgg, ${days} Hari`;
-    else ageString = `${days} Hari`;
-    
-    document.getElementById('age').value = ageString;
-}
-
-function populateTimeSlots() {
-    const timeSelect = document.getElementById('booking-time');
-    const dateInput = document.getElementById('booking-date');
-    timeSelect.innerHTML = '';
-    if (!dateInput.value) return;
-    
-    const maxQuota = 2;
-    for (let h = 8; h <= 17; h++) {
-        const time = `${String(h).padStart(2, '0')}:00`;
-        const reserved = reservations.filter(r => r.bookingDate === dateInput.value && r.bookingTime === time && r.Status !== 'Batal').length;
-        const available = maxQuota - reserved;
-        if (available > 0) {
-            timeSelect.innerHTML += `<option value="${time}">${time} (${available} slot)</option>`;
-        }
-    }
-    if (timeSelect.options.length === 0) {
-        timeSelect.innerHTML = '<option disabled>Penuh</option>';
-    }
-}
-
-async function handleFormSubmit(e) {
-    e.preventDefault();
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    submitButton.classList.add('btn-loading');
-    submitButton.disabled = true;
-
-    try {
-        const formData = {
-            rme: document.getElementById('rme').value, // Bisa kosong untuk pasien baru
-            bookerName: document.getElementById('booker-name').value,
-            phone: document.getElementById('phone').value,
-            instagram: document.getElementById('instagram').value,
-            address: document.getElementById('address').value,
-            patientName: document.getElementById('patient-name').value,
-            dob: document.getElementById('dob').value,
-            age: document.getElementById('age').value,
-            gender: document.querySelector('input[name="gender"]:checked').value,
-            category: document.getElementById('category').value === 'other' ? document.getElementById('category-other').value : document.getElementById('category').value,
-            treatments: Array.from(document.querySelectorAll('input[name="treatment"]')).map(input => input.value).filter(Boolean).join(', '),
-            hasComplaint: document.querySelector('input[name="complaint_toggle"]:checked').value,
-            complaintText: document.getElementById('complaint-text').value,
-            bookingDate: document.getElementById('booking-date').value,
-            bookingTime: document.getElementById('booking-time').value
-        };
         
-        const response = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'createReservation', data: formData })
-        });
-        const result = await response.json();
+        async function callBackend(method, action, payload = {}) {
+            if (SCRIPT_URL === 'MASUKKAN_URL_SCRIPT_ANDA_DISINI') {
+                showToast("Peringatan: URL Google Apps Script belum diatur.", "warning");
+                return { status: 'error', message: 'URL Script belum diatur.' };
+            }
+            setLoading(true);
+            try {
+                let url = SCRIPT_URL;
+                const options = { method, redirect: "follow", headers: { 'Content-Type': 'text/plain;charset=utf-8' } };
+                if (method === 'GET') {
+                    url += `?action=${action}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
+                } else {
+                    options.body = JSON.stringify({ action, payload });
+                }
+                const response = await fetch(url, options);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('Error calling backend:', error);
+                showToast('Terjadi kesalahan koneksi ke server.', 'error');
+                return { status: 'error', message: 'Terjadi kesalahan koneksi.' };
+            } finally {
+                setLoading(false);
+            }
+        }
         
-        if (result.success) {
-            await fetchInitialData(); // Ambil data terbaru, termasuk RME baru jika ada
-            showTicketModal(result.reservationId, result.newRME || formData.rme);
-            document.getElementById('reservation-form').reset();
-            document.getElementById('history-button-container').innerHTML = '';
-            calculateAge(); // Reset age field
-        } else {
-            throw new Error(result.message || 'Gagal membuat reservasi');
+        async function navigateTo(tabName) {
+            state.activeTab = tabName;
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.toggle('active-tab', tab.dataset.tab === tabName);
+                tab.classList.toggle('tab', tab.dataset.tab !== tabName);
+            });
+            const appContent = document.getElementById('app-content');
+            appContent.innerHTML = `<div class="text-center p-8"><div class="loader inline-block"></div></div>`;
+            document.getElementById('search-container').classList.toggle('hidden', tabName !== 'home');
+            updateCartFab();
+
+            const header = document.getElementById('main-header');
+            switch (tabName) {
+                case 'home':
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Reservasi Online</h1><p class="text-gray-500">Pilih treatment atau produk Anda</p>`;
+                    const itemsResult = await callBackend('GET', 'getItems');
+                    if (itemsResult.status === 'success') {
+                        state.data.treatments = itemsResult.data.treatments; state.data.products = itemsResult.data.products;
+                        appContent.innerHTML = renderHomePage();
+                        setupHomeEventListeners();
+                        renderTreatments();
+                    } else appContent.innerHTML = `<p class="text-center text-red-500">${itemsResult.message}</p>`;
+                    break;
+                case 'reservations':
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Daftar Reservasi</h1><p class="text-gray-500">Kelola status reservasi pasien</p>`;
+                    const resResult = await callBackend('GET', 'getReservations');
+                    appContent.innerHTML = renderReservationsPage(resResult.data || []);
+                    break;
+                case 'rekap':
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Laporan & Statistik</h1><p class="text-gray-500">Analisis data reservasi klinik</p>`;
+                    const rekapResult = await callBackend('GET', 'getRekapData');
+                    if (rekapResult.status === 'success') {
+                        state.rekapData = rekapResult.data;
+                        appContent.innerHTML = renderRekapPage();
+                        renderAllRekapVisuals();
+                    } else appContent.innerHTML = `<p class="text-center text-red-500">${rekapResult.message}</p>`;
+                    break;
+                // ... (case 'management' dan 'guide' tidak berubah)
+                case 'management':
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Manajemen Data</h1><p class="text-gray-500">Kelola data treatment dan produk</p>`;
+                    const manageResult = await callBackend('GET', 'getItems');
+                    if (manageResult.status === 'success') {
+                        state.data.treatments = manageResult.data.treatments; state.data.products = manageResult.data.products;
+                        appContent.innerHTML = renderManagementPage();
+                    } else appContent.innerHTML = `<p class="text-center text-red-500">${manageResult.message}</p>`;
+                    break;
+                case 'guide':
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Panduan Aplikasi</h1><p class="text-gray-500">Cara instalasi dan penggunaan</p>`;
+                    appContent.innerHTML = renderGuidePage();
+                    break;
+            }
         }
-    } catch (error) {
-        alert('Terjadi kesalahan: ' + error.message);
-    } finally {
-        submitButton.classList.remove('btn-loading');
-        submitButton.disabled = false;
-    }
-}
-
-// --- FUNGSI MANAJEMEN RESERVASI ---
-function renderReservationList() {
-    const container = document.getElementById('reservation-list');
-    const statusFilter = document.getElementById('filter-status').value;
-    const sortOption = document.getElementById('sort-by').value;
-    const searchQuery = document.getElementById('search-reservations').value.toLowerCase();
-
-    let filtered = reservations.filter(r => 
-        (statusFilter === 'all' || r.Status === statusFilter) &&
-        (r['Nama Pasien'].toLowerCase().includes(searchQuery) || (r.RME || '').includes(searchQuery))
-    );
-    
-    filtered.sort((a, b) => {
-        if (sortOption === 'timestamp-desc') return new Date(b.Timestamp) - new Date(a.Timestamp);
-        if (sortOption === 'timestamp-asc') return new Date(a.Timestamp) - new Date(b.Timestamp);
-        if (sortOption === 'name-asc') return a['Nama Pasien'].localeCompare(b['Nama Pasien']);
-        if (sortOption === 'name-desc') return b['Nama Pasien'].localeCompare(a['Nama Pasien']);
-        return 0;
-    });
-
-    container.innerHTML = filtered.length === 0 ? '<p class="text-center text-gray-500 mt-10">Tidak ada reservasi.</p>' : filtered.map(r => {
-        let statusClass = {'Dalam Antrian':'bg-blue-100 text-blue-800','Sedang Treatment':'bg-yellow-100 text-yellow-800','Selesai':'bg-green-100 text-green-800','Batal':'bg-red-100 text-red-800'}[r.Status] || 'bg-gray-100 text-gray-800';
-        return `<div class="bg-white rounded-xl p-4 shadow-md border border-pink-100">
-            <div class="flex justify-between items-start mb-2">
-                <div><h3 class="font-bold text-lg text-pink-800">${r['Nama Pasien']}</h3><p class="text-sm text-gray-600">${r['Nama Pemesan']} • ${r.Telepon}</p></div>
-                <span class="px-2 py-1 rounded-full text-xs font-semibold ${statusClass}">${r.Status}</span>
-            </div>
-            <div class="mb-3 text-sm"><p><strong>RME:</strong> ${r.RME||'-'}</p><p><strong>Jadwal:</strong> ${new Date(r.bookingDate).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'})}, ${r['Jam Booking']}</p></div>
-            <div class="flex flex-wrap gap-2">
-                ${r.Status === 'Dalam Antrian' ? `<button onclick="startTreatment('${r.ID}')" class="px-3 py-1 bg-yellow-500 text-white rounded-lg text-sm font-semibold">Mulai</button>` : ''}
-                ${r.Status === 'Sedang Treatment' ? `<button onclick="showTherapistModal('${r.ID}')" class="px-3 py-1 bg-green-600 text-white rounded-lg text-sm font-semibold">Selesaikan</button>` : ''}
-                ${r.Status !== 'Batal' && r.Status !== 'Selesai' ? `<button onclick="cancelReservation('${r.ID}')" class="px-3 py-1 bg-red-500 text-white rounded-lg text-sm font-semibold">Batal</button>` : ''}
-            </div>
-        </div>`;
-    }).join('');
-}
-
-async function updateReservationStatus(id, status, data = null) {
-    showLoading();
-    try {
-        const response = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'updateStatus', id, status, data }) });
-        const result = await response.json();
-        if (result.success) {
-            await fetchInitialData();
-            alert(`Status berhasil diubah.`);
-        } else { throw new Error(result.message); }
-    } catch (e) { alert('Gagal mengubah status: ' + e.message); } 
-    finally { hideLoading(); }
-}
-function startTreatment(id) { if (confirm('Mulai treatment?')) updateReservationStatus(id, 'Sedang Treatment'); }
-function cancelReservation(id) { if (confirm('Batalkan reservasi ini?')) updateReservationStatus(id, 'Batal'); }
-function showTherapistModal(id) {
-    currentlyEditingReservationId = id;
-    document.getElementById('therapist-modal').classList.remove('hidden');
-    document.getElementById('therapist-modal').querySelector('form')?.reset(); // Reset if it's a form
-}
-function hideTherapistModal() { document.getElementById('therapist-modal').classList.add('hidden'); }
-async function completeTreatment() {
-    const therapistName = document.getElementById('therapist-name').value;
-    if (!therapistName) { alert('Nama terapis harus diisi.'); return; }
-    const medicalData = {
-        therapist: therapistName,
-        additionalTreatment: document.getElementById('additional-treatment').value,
-        fee: document.getElementById('treatment-fee').value,
-        temperature: document.getElementById('medical-temperature').value,
-        weight: document.getElementById('medical-weight').value,
-        height: document.getElementById('medical-height').value,
-        bmi: document.getElementById('medical-bmi').value,
-        allergy: document.getElementById('medical-allergy').value,
-        bloodPressure: document.getElementById('medical-blood-pressure').value,
-        medicalNotes: document.getElementById('medical-notes').value
-    };
-    await updateReservationStatus(currentlyEditingReservationId, 'Selesai', medicalData);
-    hideTherapistModal();
-}
-function calculateBMI() {
-    const w = parseFloat(document.getElementById('medical-weight').value);
-    const h = parseFloat(document.getElementById('medical-height').value) / 100;
-    document.getElementById('medical-bmi').value = (w && h) ? (w / (h * h)).toFixed(1) : '';
-}
-
-// --- FUNGSI TIKET ---
-function showTicketModal(reservationId, rme) {
-    const r = reservations.find(res => res.ID === reservationId);
-    if (!r) return;
-    document.getElementById('ticket-rme').textContent = rme || '-';
-    document.getElementById('ticket-name').textContent = r['Nama Pasien'];
-    document.getElementById('ticket-treatment').textContent = r.Treatments;
-    document.getElementById('ticket-schedule').textContent = `${new Date(r.bookingDate).toLocaleDateString('id-ID')}, ${r['Jam Booking']}`;
-    const queueNumber = reservations.filter(res => res.bookingDate === r.bookingDate && res.Status === 'Dalam Antrian').length;
-    document.getElementById('ticket-queue-number').textContent = `A${String(queueNumber).padStart(2, '0')}`;
-    document.getElementById('ticket-modal').classList.remove('hidden');
-}
-function hideTicketModal() { document.getElementById('ticket-modal').classList.add('hidden'); }
-function downloadTicket() { html2canvas(document.getElementById('ticket-content')).then(c => { const a = document.createElement('a'); a.download = 'nomor-antrian.png'; a.href = c.toDataURL('image/png'); a.click(); }); }
-
-
-// --- [REVISI] FUNGSI LAPORAN STATISTIK ---
-function generateStats(period) {
-    const now = new Date();
-    let startDate = new Date();
-    startDate.setHours(0, 0, 0, 0);
-
-    if (period === 'today') {
-        // defaults to today
-    } else if (period === 'week') {
-        startDate.setDate(now.getDate() - 6);
-    } else if (period === 'month') {
-        startDate.setDate(now.getDate() - 29);
-    }
-
-    const filtered = reservations.filter(r => {
-        const resDate = new Date(r.bookingDate);
-        return resDate >= startDate && resDate <= now && r.Status !== 'Batal';
-    });
-
-    // Hitung KPI
-    const totalReservations = filtered.length;
-    const totalRevenue = filtered.reduce((sum, r) => sum + (parseInt(r.Tarif, 10) || 0), 0);
-    document.getElementById('stats-total-reservations').textContent = totalReservations;
-    document.getElementById('stats-total-revenue').textContent = `Rp${(totalRevenue/1000).toFixed(0)}k`;
-
-    // Data untuk Chart Kategori
-    const categoryCounts = filtered.reduce((acc, r) => {
-        acc[r.Kategori] = (acc[r.Kategori] || 0) + 1;
-        return acc;
-    }, {});
-    const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    updateChart('category-chart', categoryChartInstance, 'doughnut', sortedCategories.map(c => c[0]), sortedCategories.map(c => c[1]), 'Kategori Treatment');
-
-    // Data untuk Chart Harian
-    const dailyCounts = {};
-    for (let i = 0; i < (period === 'today' ? 1 : period === 'week' ? 7 : 30); i++) {
-        const d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
-        dailyCounts[d.toISOString().split('T')[0]] = 0;
-    }
-    filtered.forEach(r => { dailyCounts[r.bookingDate] = (dailyCounts[r.bookingDate] || 0) + 1; });
-    const dailyLabels = Object.keys(dailyCounts).map(d => new Date(d).toLocaleDateString('id-ID', {weekday:'short', day:'2-digit'}));
-    updateChart('daily-chart', dailyChartInstance, 'bar', dailyLabels, Object.values(dailyCounts), 'Total Kunjungan');
-    
-    // Saran Pintar
-    const topCategory = sortedCategories.length > 0 ? sortedCategories[0][0] : null;
-    let suggestion = "Data belum cukup untuk memberikan saran.";
-    if (totalReservations > 5 && topCategory) {
-        suggestion = `<strong>${topCategory}</strong> sedang populer! Pertimbangkan untuk membuat paket promo atau menonjolkan layanan ini di media sosial untuk menarik lebih banyak pelanggan.`;
-    } else if (totalReservations <= 2) {
-        suggestion = "Kunjungan terlihat sepi. Coba tingkatkan promosi di media sosial atau tawarkan diskon khusus untuk meningkatkan jumlah reservasi.";
-    }
-    document.getElementById('smart-suggestion').innerHTML = suggestion;
-}
-
-function updateChart(canvasId, chartInstance, type, labels, data, label) {
-    const ctx = document.getElementById(canvasId).getContext('2d');
-    if (chartInstance) {
-        chartInstance.destroy();
-    }
-    
-    // Simpan instance chart yang baru dibuat
-    if (canvasId === 'category-chart') {
-        categoryChartInstance = new Chart(ctx, chartConfig(type, labels, data, label));
-    } else if (canvasId === 'daily-chart') {
-        dailyChartInstance = new Chart(ctx, chartConfig(type, labels, data, label));
-    }
-}
-
-function chartConfig(type, labels, data, label) {
-    const chartColors = {
-        'doughnut': ['#EC4899', '#F472B6', '#F9A8D4', '#FBCFE8', '#FCE7F3'],
-        'bar': '#EC4899'
-    };
-    return {
-        type: type,
-        data: {
-            labels: labels,
-            datasets: [{
-                label: label,
-                data: data,
-                backgroundColor: chartColors[type],
-                borderColor: '#ffffff',
-                borderWidth: type === 'doughnut' ? 2 : 0,
-                borderRadius: type === 'bar' ? 5 : 0,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: type === 'doughnut' } },
-            scales: { y: { beginAtZero: true, display: type === 'bar' } }
+        
+        async function handleSearch(e) {
+            const query = e.target.value.toLowerCase();
+            const resultsContainer = document.getElementById('search-results');
+            if (query.length < 2) {
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+            const result = await callBackend('GET', 'getPatients', { query: query });
+            resultsContainer.innerHTML = '';
+            if (result.status === 'success' && result.data.length > 0) {
+                // PERBAIKAN: Simpan hasil pencarian ke state
+                state.data.searchResults = result.data;
+                // PERBAIKAN: Tambahkan data-index untuk setiap item
+                result.data.forEach((p, index) => {
+                    resultsContainer.innerHTML += `<div data-index="${index}" class="p-3 hover:bg-pink-100 cursor-pointer border-b search-result-item"><p class="font-semibold">${p.Nama_Pasien} <span class="text-sm text-gray-500">(${p.RME})</span></p><p class="text-sm text-gray-600">${p.Alamat || ''}</p></div>`;
+                });
+                resultsContainer.classList.remove('hidden');
+            } else {
+                state.data.searchResults = [];
+                resultsContainer.innerHTML = `<div class="p-3 text-gray-500">Tidak ada hasil ditemukan.</div>`;
+                resultsContainer.classList.remove('hidden');
+            }
         }
-    };
-}
 
+        // FUNGSI BARU: Untuk memilih pasien dan mengisi form
+        function selectPatientAndFillForm(index) {
+            const patient = state.data.searchResults[index];
+            if (!patient) return;
 
-// --- FUNGSI BANTUAN ---
-function showLoading() { document.getElementById('loading-spinner').classList.remove('hidden'); }
-function hideLoading() { document.getElementById('loading-spinner').classList.add('hidden'); }
-function showHistoryModal() { document.getElementById('history-modal').classList.remove('hidden'); }
-function hideHistoryModal() { document.getElementById('history-modal').classList.add('hidden'); }
-function handleCategoryChange() { document.getElementById('category-other').classList.toggle('hidden', document.getElementById('category').value !== 'other'); }
-function handleComplaintToggle() { document.getElementById('complaint-text').classList.toggle('hidden', document.querySelector('input[name="complaint_toggle"]:checked').value !== 'ya'); }
-function addTreatmentField() { treatmentCounter++; const div = document.createElement('div'); div.innerHTML = `<label class="block text-sm font-medium text-gray-700 mb-1">Treatment ${treatmentCounter}</label><input type="text" name="treatment" class="w-full p-3 rounded-lg form-input">`; document.getElementById('treatments-container').appendChild(div); }
-</script>
+            // Buka form reservasi
+            showReservationForm();
+            
+            // Tunggu sesaat agar modal sempat dirender
+            setTimeout(() => {
+                const form = document.getElementById('reservation-form');
+                if (form) {
+                    form.requesterName.value = patient.Nama_Pemesan || '';
+                    form.phone.value = patient.No_HP || '';
+                    form.instagram.value = patient.Instagram || '';
+                    form.address.value = patient.Alamat || '';
+                    form.patientName.value = patient.Nama_Pasien || '';
+                    form.gender.value = patient.Jenis_Kelamin || 'Wanita';
+                    
+                    // Format tanggal lahir
+                    if (patient.Tanggal_Lahir) {
+                        const dob = new Date(patient.Tanggal_Lahir);
+                        if (!isNaN(dob.getTime())) {
+                            form.dob.value = dob.toISOString().split('T')[0];
+                            // Trigger event change untuk update usia
+                            form.dob.dispatchEvent(new Event('change'));
+                        }
+                    }
+                }
+            }, 100); // delay 100ms
+
+            // Sembunyikan hasil pencarian
+            document.getElementById('search-results').classList.add('hidden');
+            document.getElementById('search-patient-input').value = '';
+        }
+
+        function renderReservationsPage(reservations) {
+            if (!reservations || reservations.length === 0) return `<div class="text-center p-8 text-gray-500"><i class="fas fa-calendar-times fa-3x mb-3"></i><p>Belum ada data reservasi.</p></div>`;
+            const statusColors = { 'Menunggu': 'text-blue-500 border-blue-200 bg-blue-50', 'Selesai': 'text-green-500 border-green-200 bg-green-50' };
+            return `<div class="space-y-4">${reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).map(res => {
+                // PERBAIKAN: Pemeriksaan tanggal sebelum ditampilkan
+                const visitDate = new Date(res.Tanggal_Datang);
+                const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID',{dateStyle:'medium', timeStyle:'short'}) : 'Tanggal Invalid';
+                
+                return `<div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-start"><div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-gray-500">(${res.RME})</span></p><p class="text-sm text-gray-600">${JSON.parse(res.Items || '[]').join(', ')}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusColors[res.Status] || 'text-gray-500'}">${res.Status}</span></div><p class="text-sm text-gray-600 mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p>${res.Status !== 'Selesai' ? `<div class="mt-3 text-right"><button onclick="showCompleteModal('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button></div>`: ''}</div>`;
+            }).join('')}</div>`;
+        }
+        
+        function populateTimeOptions() {
+            const timeSelect = document.querySelector('select[name="visitTime"]');
+            if(!timeSelect) return;
+            const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
+            timeSelect.innerHTML = '';
+            if(isPartus) {
+                timeSelect.innerHTML = '<option value="24_jam">24 Jam (Khusus Partus)</option>';
+                return;
+            }
+            let startTime = new Date(); startTime.setHours(8, 0, 0, 0);
+            let endTime = new Date(); endTime.setHours(21, 30, 0, 0);
+            while(startTime <= endTime) {
+                // PERBAIKAN: Koreksi pada regex
+                const timeString = startTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
+                timeSelect.appendChild(new Option(timeString, timeString));
+                startTime.setMinutes(startTime.getMinutes() + 30);
+            }
+        }
+
+        // --- SISA FUNGSI (sebagian besar tidak berubah, hanya perbaikan kecil) ---
+        function renderHomePage() { return `<div class="flex border-b-2 border-gray-200 mb-4"><button data-tab="treatments" class="home-tab active-tab flex-1 p-3 text-center text-gray-700">Treatments</button><button data-tab="products" class="home-tab tab flex-1 p-3 text-center text-gray-700">Produk</button></div><div id="home-content"></div>`; }
+        function setupHomeEventListeners() { document.querySelectorAll('.home-tab').forEach(tab => { tab.addEventListener('click', () => { state.activeHomeTab = tab.dataset.tab; document.querySelectorAll('.home-tab').forEach(t => { t.classList.remove('active-tab'); t.classList.add('tab'); }); tab.classList.add('active-tab'); tab.classList.remove('tab'); if (state.activeHomeTab === 'treatments') renderTreatments(); else renderProducts(); }); }); }
+        function renderTreatments() { const categories = ['All', ...new Set(state.data.treatments.map(t => t.Kategori))]; const filtered = state.treatmentFilter === 'All' ? state.data.treatments : state.data.treatments.filter(t => t.Kategori === state.treatmentFilter); let filterHtml = `<div class="mb-4 overflow-x-auto whitespace-nowrap pb-2">${categories.map(cat => `<button data-category="${cat}" class="category-filter inline-block px-4 py-2 mr-2 rounded-full shadow-sm text-sm ${state.treatmentFilter === cat ? 'bg-theme-pink text-white' : 'bg-white text-gray-700'}">${cat}</button>`).join('')}</div>`; let itemsHtml = `<div class="grid grid-cols-1 gap-4">${filtered.map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Treatment); return `<div data-id="${item.ID_Treatment}" data-type="treatment" class="item-card bg-white rounded-lg shadow overflow-hidden flex cursor-pointer ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFC0CB/FF6B8A?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold text-gray-800">${item.Nama}</h3><p class="text-sm text-gray-600">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-gray-500 py-8">Tidak ada treatment.</p>`}</div>`; document.getElementById('home-content').innerHTML = filterHtml + itemsHtml; setupItemSelection(); }
+        function renderProducts() { let itemsHtml = `<div class="grid grid-cols-1 gap-4">${state.data.products.map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Produk); return `<div data-id="${item.ID_Produk}" data-type="product" class="item-card bg-white rounded-lg shadow overflow-hidden flex cursor-pointer ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFFACD/FFD700?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold text-gray-800">${item.Nama}</h3><p class="text-sm text-gray-600">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-gray-500 py-8">Tidak ada produk.</p>`}</div>`; document.getElementById('home-content').innerHTML = itemsHtml; setupItemSelection(); }
+        function setupItemSelection() { document.querySelectorAll('.category-filter').forEach(btn => btn.addEventListener('click', (e) => { state.treatmentFilter = e.target.dataset.category; renderTreatments(); })); document.querySelectorAll('.item-card').forEach(card => card.addEventListener('click', () => { const itemId = card.dataset.id; const itemIndex = state.selectedItems.findIndex(i => i.id === itemId); if (itemIndex > -1) { state.selectedItems.splice(itemIndex, 1); card.classList.remove('ring-2', 'ring-pink-500'); } else { const type = card.dataset.type; const source = type === 'treatment' ? state.data.treatments : state.data.products; const idField = type === 'treatment' ? 'ID_Treatment' : 'ID_Produk'; const itemData = source.find(i => i[idField] === itemId); if (itemData) { state.selectedItems.push({ id: itemId, name: itemData.Nama, category: itemData.Kategori || null }); card.classList.add('ring-2', 'ring-pink-500'); } } updateCartFab(); })); }
+        function updateCartFab() { const fab = document.getElementById('booking-cart-fab'); const count = document.getElementById('cart-count'); fab.classList.toggle('hidden', state.selectedItems.length === 0 || state.activeTab !== 'home'); count.textContent = state.selectedItems.length; }
+        function renderRekapPage() { return `<div class="space-y-6"><div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Grafik Statistik</h3><button onclick="printSection('rekap-charts', 'Laporan Grafik Statistik')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="rekap-charts" class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="md:col-span-2"><canvas id="dailyTrendChart"></canvas></div><div><canvas id="categoryChart"></canvas></div><div><canvas id="treatmentNameChart"></canvas></div><div><canvas id="genderChart"></canvas></div><div><canvas id="dayChart"></canvas></div><div class="md:col-span-2"><canvas id="hourChart"></canvas></div><div><canvas id="monthChart"></canvas></div><div><canvas id="therapistChart"></canvas></div></div></div><div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Rekap Kalender</h3><button onclick="printSection('calendar-container', 'Laporan Rekap Kalender')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="calendar-container"></div></div><div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Rekap Tabel</h3><button onclick="printSection('table-container', 'Laporan Rekap Tabel')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="table-container" class="max-h-96 overflow-auto"></div></div></div>`; }
+        function renderAllRekapVisuals() { const { stats, rawReservations } = state.rekapData; createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend), Object.values(stats.dailyTrend), 'Grafik Naik/Turun Total Reservasi'); createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Survey Kategori Treatment'); createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Survey Nama Treatment Terpopuler'); createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Survey Jenis Kelamin Pengunjung'); createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Survey Hari Teramai'); createChart('hourChart', 'line', Object.keys(stats.peakHourCounts).sort(), Object.keys(stats.peakHourCounts).sort().map(key => stats.peakHourCounts[key]), 'Survey Jam Teramai'); createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Survey Bulan Teramai'); createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Survey Kinerja Terapis/Bidan'); renderCalendar(); renderRekapTable(rawReservations); }
+        function createChart(canvasId, type, labels, data, title) { const ctx = document.getElementById(canvasId); if (!ctx || !data || data.length === 0 || Object.values(data).every(v=>v===0)) { if(ctx) ctx.parentElement.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm font-semibold">${title}<br/><span class="font-normal">(Tidak ada data)</span></div>`; return; } const colors = ['#FF6B8A', '#FFC0CB', '#FFDAB9', '#E6E6FA', '#98FB98', '#ADD8E6', '#F0E68C']; new Chart(ctx, { type, data: { labels, datasets: [{ label: 'Jumlah', data, backgroundColor: colors, borderColor: '#FFF8F9', borderWidth: 2, tension: 0.3 }] }, options: { responsive: true, plugins: { legend: { display: ['pie', 'doughnut'].includes(type) }, title: { display: true, text: title, font: { size: 16 } } } } }); }
+        function renderCalendar() { const container = document.getElementById('calendar-container'); if (!container) return; const { calendarData } = state.rekapData.stats; const date = state.currentCalendarDate; const month = date.getMonth(); const year = date.getFullYear(); const firstDay = new Date(year, month, 1); const lastDay = new Date(year, month + 1, 0); const daysInMonth = lastDay.getDate(); const startDayOfWeek = firstDay.getDay(); let html = `<div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-left"></i></button><h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'})}</h4><button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-right"></i></button></div><div class="calendar-grid text-center font-semibold text-sm mb-2">${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div>${d}</div>`).join('')}</div><div class="calendar-grid">`; for (let i = 0; i < startDayOfWeek; i++) { html += `<div class="calendar-day other-month"></div>`; } for (let day = 1; day <= daysInMonth; day++) { const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const count = calendarData[dateKey] || 0; let colorClass = 'bg-gray-100'; if (count > 0) colorClass = 'bg-green-200'; if (count > 2) colorClass = 'bg-yellow-200'; if (count > 5) colorClass = 'bg-red-300'; html += `<div class="calendar-day ${colorClass}"><span class="day-number">${day}</span>${count > 0 ? `<span class="res-count">${count} res.</span>` : ''}</div>`; } html += `</div>`; container.innerHTML = html; }
+        function changeMonth(direction) { state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + direction); renderCalendar(); }
+        function renderRekapTable(reservations) { const container = document.getElementById('table-container'); if (!container || !reservations || reservations.length === 0) { if(container) container.innerHTML = `<p class="text-center text-gray-500 py-4">Tidak ada data.</p>`; return; } let tableHTML = `<table class="w-full text-sm text-left text-gray-600"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-4 py-2">Tgl Datang</th><th class="px-4 py-2">Pasien</th><th class="px-4 py-2">Items</th><th class="px-4 py-2">Status</th></tr></thead><tbody>`; reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => { const d = new Date(res.Tanggal_Datang); const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID'); tableHTML += `<tr class="bg-white border-b"><td class="px-4 py-2">${dateStr}</td><td class="px-4 py-2 font-medium">${res.Nama_Pasien}</td><td class="px-4 py-2">${JSON.parse(res.Items || '[]').join(', ')}</td><td class="px-4 py-2">${res.Status}</td></tr>`; }); tableHTML += `</tbody></table>`; container.innerHTML = tableHTML; }
+        async function printSection(elementId, title) { const { jsPDF } = window.jspdf; const elementToPrint = document.getElementById(elementId); if (!elementToPrint) return; showToast('Mempersiapkan PDF...', 'info'); const pdf = new jsPDF('p', 'mm', 'a4'); pdf.setFontSize(16); pdf.text(title, 105, 15, null, null, 'center'); pdf.setFontSize(10); pdf.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 105, 22, null, null, 'center'); const canvas = await html2canvas(elementToPrint, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }); const imgData = canvas.toDataURL('image/png'); const imgProps = pdf.getImageProperties(imgData); const pdfWidth = pdf.internal.pageSize.getWidth() - 20; const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width; let currentHeight = 30; if (pdfHeight < (pdf.internal.pageSize.getHeight() - currentHeight - 10)) { pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdfHeight); } else { showToast('Konten terlalu panjang, mungkin terpotong.', 'warning'); pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdf.internal.pageSize.getHeight() - currentHeight - 10); } pdf.save(`${title.replace(/ /g, '-')}.pdf`); }
+        function renderGuidePage() { return `<div class="bg-white p-6 rounded-lg shadow space-y-6"><div><h2 class="text-xl font-bold theme-pink border-b-2 border-pink-200 pb-2 mb-3">Panduan Instalasi Backend</h2><ol class="list-decimal list-inside space-y-2 text-gray-700"><li>Buka <a href="https://sheets.new" target="_blank" class="text-blue-500 hover:underline">Google Sheets</a> & buat spreadsheet baru.</li><li>Beri nama file (misal: 'KlinikNabilahDB').</li><li>Klik <strong>Ekstensi > Apps Script</strong>.</li><li>Salin-tempel seluruh isi file <code>gs.js</code>.</li><li>Klik ikon <strong>Simpan proyek</strong>.</li><li>Klik tombol <strong>Deploy > Deploy baru</strong>.</li><li>Pilih jenis deploy: <strong>Aplikasi Web</strong>.</li><li>Pada 'Siapa yang memiliki akses', pilih <strong>Siapa saja</strong>.</li><li>Klik <strong>Deploy</strong> & Izinkan akses.</li><li>Salin <strong>URL Aplikasi Web</strong> yang muncul.</li><li>Buka file <code>index.html</code> ini, cari <code>SCRIPT_URL</code> & tempel URL Anda.</li><li><strong>PENTING:</strong> Kembali ke Apps Script, pilih fungsi <code>setupInitialSheet</code>, lalu klik <strong>Jalankan</strong> untuk membuat sheet awal.</li><li>Jika mengubah <code>gs.js</code>, Anda harus <strong>Deploy Ulang</strong> (Deploy > Kelola Deployment > Edit > versi 'Baru' > Deploy).</li></ol></div><div><h2 class="text-xl font-bold theme-pink border-b-2 border-pink-200 pb-2 mb-3">Panduan Penggunaan</h2><ul class="list-disc list-inside space-y-2 text-gray-700"><li><strong>Manajemen Data:</strong> Isi daftar Treatment & Produk di tab 'Manajemen' agar muncul di halaman Home.</li><li><strong>Home:</strong> Pilih item. Tombol reservasi (<i class="fas fa-calendar-check"></i>) akan muncul.</li><li><strong>Daftar Reservasi:</strong> Lihat & selesaikan reservasi.</li><li><strong>Laporan:</strong> Lihat statistik berdasarkan data reservasi.</li></ul></div></div>`; }
+        function showReservationForm() { const items = state.selectedItems.map(item => item.name).join('\n'); const modalHtml = `<div id="reservation-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto"><form id="reservation-form" class="p-6 space-y-4"><h2 class="text-2xl font-bold mb-4 theme-pink">Form Reservasi</h2><div><label class="block text-sm font-medium">Nama Pemesan</label><input type="text" name="requesterName" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">No. HP/WA</label><input type="tel" name="phone" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">Instagram (opsional)</label><input type="text" name="instagram" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm font-medium">Alamat Domisili</label><input type="text" name="address" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><hr/><div><label class="block text-sm font-medium">Nama Pasien</label><input type="text" name="patientName" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">Tgl Lahir Pasien</label><input type="date" name="dob" id="dob-input" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">Jenis Kelamin</label><select name="gender" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required><option value="Wanita">Wanita</option><option value="Pria">Pria</option></select></div><div><label class="block text-sm font-medium">Usia Detail</label><input type="text" id="age-output" class="mt-1 w-full bg-gray-100 rounded-md" readonly></div><div><label class="block text-sm font-medium">Item Dipilih</label><textarea class="mt-1 w-full bg-gray-100 rounded-md" rows="2" readonly>${items}</textarea></div><div><label class="block text-sm font-medium">Rencana Tgl Datang</label><input type="date" name="visitDate" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required min="${new Date().toISOString().split('T')[0]}"></div><div><label class="block text-sm font-medium">Pilih Jam</label><select name="visitTime" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></select></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('reservation-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Pesan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; populateTimeOptions(); document.getElementById('dob-input').addEventListener('change', updateAgeAndDay); document.getElementById('reservation-form').addEventListener('submit', handleReservationSubmit); }
+        function updateAgeAndDay(e) { const dob = new Date(e.target.value); if (isNaN(dob.getTime())) return; const now = new Date(); let years = now.getFullYear() - dob.getFullYear(); let months = now.getMonth() - dob.getMonth(); let days = now.getDate() - dob.getDate(); if (days < 0) { months--; const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0); days += prevMonth.getDate(); } if (months < 0) { years--; months += 12; } const totalDays = Math.floor((now - dob) / (1000 * 60 * 60 * 24)); const weeks = Math.floor(totalDays / 7); document.getElementById('age-output').value = `${years} tahun, ${months} bulan, ${weeks % 52} pekan, ${days} hari`; }
+        async function handleReservationSubmit(e) { e.preventDefault(); const formData = new FormData(e.target); const data = Object.fromEntries(formData.entries()); data.selectedItems = state.selectedItems; const result = await callBackend('POST', 'newReservation', data); if (result.status === 'success') { closeModal('reservation-modal'); showToast(`Reservasi berhasil! RME: ${result.data.rme}`, 'success'); state.selectedItems = []; updateCartFab(); navigateTo('reservations'); } else { showToast(`Gagal: ${result.message}`, 'error'); } }
+        function showCompleteModal(reservationId) { const modalHtml = `<div id="complete-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg m-4"><form id="complete-form" class="p-6"><h2 class="text-2xl font-bold mb-4 theme-pink">Selesaikan Reservasi</h2><input type="hidden" name="reservationId" value="${reservationId}"><div class="space-y-4"><div><label class="block text-sm font-medium">Nama Terapis/Bidan</label><input type="text" name="therapist" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><h3 class="text-lg font-semibold pt-2 border-t">Data Pemeriksaan</h3><div class="grid grid-cols-2 gap-4"><div><label class="text-sm">Suhu (°C)</label><input type="number" step="0.1" name="temp" class="mt-1 w-full border-gray-300 rounded-md"></div><div><label class="text-sm">Berat (kg)</label><input type="number" step="0.1" name="weight" class="mt-1 w-full border-gray-300 rounded-md"></div><div><label class="text-sm">Tinggi (cm)</label><input type="number" step="0.1" name="height" class="mt-1 w-full border-gray-300 rounded-md"></div><div><label class="text-sm">LILA (cm)</label><input type="number" step="0.1" name="lila" class="mt-1 w-full border-gray-300 rounded-md"></div></div><div><label class="text-sm">Catatan</label><textarea name="examNotes" class="mt-1 w-full border-gray-300 rounded-md" rows="2"></textarea></div></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('complete-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Simpan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; document.getElementById('complete-form').addEventListener('submit', handleCompleteSubmit); }
+        async function handleCompleteSubmit(e) { e.preventDefault(); const formData = new FormData(e.target); const data = Object.fromEntries(formData.entries()); const result = await callBackend('POST', 'completeReservation', data); if (result.status === 'success') { closeModal('complete-modal'); showToast(result.message, 'success'); navigateTo('reservations'); } else { showToast(`Gagal: ${result.message}`, 'error'); } }
+        function renderManagementPage() { const {treatments, products} = state.data; return `<div class="space-y-6"><div><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold text-gray-700">Manajemen Treatment</h2><button onclick="showItemFormModal(null, 'treatment')" class="bg-theme-pink text-white px-3 py-1 rounded-lg shadow text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div><div class="space-y-2">${treatments.map(t => `<div class="bg-white p-3 rounded-lg shadow flex justify-between items-center"><div><p class="font-semibold">${t.Nama}</p><p class="text-xs text-gray-500">${t.Kategori}</p></div><button onclick='showItemFormModal(${JSON.stringify(t)}, "treatment")' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button></div>`).join('') || '<p class="text-center text-gray-500 text-sm py-4">Belum ada data.</p>'}</div></div><div><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold text-gray-700">Manajemen Produk</h2><button onclick="showItemFormModal(null, 'product')" class="bg-theme-pink text-white px-3 py-1 rounded-lg shadow text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div><div class="space-y-2">${products.map(p => `<div class="bg-white p-3 rounded-lg shadow flex justify-between items-center"><p class="font-semibold">${p.Nama}</p><button onclick='showItemFormModal(${JSON.stringify(p)}, "product")' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button></div>`).join('') || '<p class="text-center text-gray-500 text-sm py-4">Belum ada data.</p>'}</div></div></div>`; }
+        function showItemFormModal(item, type) { const isEdit = item !== null; const title = `${isEdit ? 'Edit' : 'Tambah'} ${type === 'treatment' ? 'Treatment' : 'Produk'}`; const itemCategories = ['Baby Treatment', 'Kid Treatment', 'Mom Treatment', 'Ladies Treatment', 'Ibu Hamil/Nifas Treatment', 'Tindik Treatment', 'Paket Bersalin/Partus', 'USG', 'Homecare Treatment', 'Kelas Senam', 'Umum/Lainnya']; const modalHtml = `<div id="item-form-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg m-4"><form id="item-form" class="p-6"><h2 class="text-2xl font-bold mb-4 theme-pink">${title}</h2><input type="hidden" name="id" value="${isEdit ? (item.ID_Treatment || item.ID_Produk) : ''}"><input type="hidden" name="type" value="${type}"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700">Nama</label><input type="text" name="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="${isEdit ? item.Nama : ''}" required></div>${type === 'treatment' ? `<div><label class="block text-sm font-medium text-gray-700">Kategori</label><select name="category" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>${itemCategories.map(cat => `<option value="${cat}" ${isEdit && item.Kategori === cat ? 'selected' : ''}>${cat}</option>`).join('')}</select></div>` : ''}<div><label class="block text-sm font-medium text-gray-700">Deskripsi</label><textarea name="description" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" rows="3" required>${isEdit ? item.Deskripsi : ''}</textarea></div></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('item-form-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Simpan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; document.getElementById('item-form').addEventListener('submit', handleItemFormSubmit); }
+        async function handleItemFormSubmit(e) { e.preventDefault(); const formData = new FormData(e.target); const data = Object.fromEntries(formData.entries()); const result = await callBackend('POST', 'addOrUpdateItem', data); if(result.status === 'success') { closeModal('item-form-modal'); showToast(result.message, 'success'); navigateTo('management'); } else { showToast(`Gagal: ${result.message}`, 'error'); } }
+        function setLoading(isLoading) { document.getElementById('global-loader').style.display = isLoading ? 'flex' : 'none'; }
+        function showToast(message, type = 'info') { const toast = document.createElement('div'); const colors = {'success':'bg-green-500', 'error':'bg-red-500', 'warning':'bg-yellow-500', 'info':'bg-blue-500'}; toast.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-[101] transition-transform transform translate-x-full`; toast.textContent = message; document.body.appendChild(toast); setTimeout(() => toast.classList.remove('translate-x-full'), 100); setTimeout(() => { toast.classList.add('translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3500); }
+        function closeModal(modalId) { const modal = document.getElementById(modalId); if (modal) modal.remove(); }
+    </script>
 </body>
 </html>
 
