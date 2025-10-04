@@ -1,671 +1,208 @@
-// Hak cipta (c) 2025 A. Ro'pat Tanjung - Dibuat untuk Klinik Nabilah Pulungan
-// Script ini berfungsi sebagai backend untuk menerima data dari aplikasi web reservasi.
+// =================================================================
+//      BACKEND - KLINIK NABILAH PULUNGAN (Google Apps Script)
+// =================================================================
+// File: backend.gs
+// Author: Ahmad Ro'pat Tanjung - Gemini (diperbarui dengan perbaikan)
+// Instructions:
+// 1. Ganti kode di Apps Script Anda dengan kode ini.
+// 2. Tidak perlu menjalankan `setupInitialSheet` lagi.
+// 3. Deploy ulang sebagai Web App (PENTING: Pilih versi BARU saat deploy ulang).
+// =================================================================
 
-// ID Spreadsheet bisa didapatkan dari URL Google Sheet Anda
-// Contoh: docs.google.com/spreadsheets/d/THIS_IS_THE_ID/edit
-const SPREADSHEET_ID = "1NuDpvUSqY7WpxSHz1CDTWEhfnUYbZRO3HIJxvThj45w"; 
-const RESERVATION_SHEET_NAME = "Reservasi";
-const CUSTOMER_SHEET_NAME = "Pelanggan";
-
-// Konstanta untuk Autocrat
-const AUTOCRAT_JOB_NAME = "API_Reservasi";
+const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId();
+const PATIENT_SHEET_NAME = 'Pasien';
+const RESERVATION_SHEET_NAME = 'Reservasi';
+const TREATMENT_SHEET_NAME = 'Treatments';
+const PRODUCT_SHEET_NAME = 'Products';
+const LOG_SHEET_NAME = 'Log';
 
 function doGet(e) {
   try {
     const action = e.parameter.action;
-    
-    if (action === 'getData') {
-      return getDataFromSheets();
-    } else if (action === 'searchCustomers') {
-      const searchTerm = e.parameter.term;
-      return searchCustomers(searchTerm);
-    } else if (action === 'getQueueData') {
-      return getQueueData();
-    } else if (action === 'getReservationById') {
-      const reservationId = e.parameter.id;
-      return getReservationById(reservationId);
-    } else if (action === 'checkTriggers') {
-      return ContentService
-        .createTextOutput(JSON.stringify(checkActiveTriggers()))
-        .setMimeType(ContentService.MimeType.JSON);
+    const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
+    let response;
+
+    switch(action) {
+      case 'getReservations': response = getReservations(); break;
+      case 'getPatients': response = getPatients(payload.query); break;
+      case 'getItems': response = getItems(); break;
+      case 'getRekapData': response = getRekapData(); break;
+      default: response = { status: 'error', message: 'Invalid GET action' };
     }
-    
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": "Action tidak valid" }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
+    return createJsonResponse(response);
   } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    logError('doGet', error);
+    return createJsonResponse({ status: 'error', message: error.message });
   }
 }
 
 function doPost(e) {
   try {
-    const action = e.parameter.action;
-    const data = JSON.parse(e.parameter.data);
-    
-    if (action === 'newReservation') {
-      return handleNewReservation(data);
-    } else if (action === 'updateStatus') {
-      return handleUpdateStatus(data);
-    } else if (action === 'completeTreatment') {
-      return handleCompleteTreatment(data);
-    } else if (action === 'runAutocrat') {
-      autoRunAutocrat();
-      return ContentService
-        .createTextOutput(JSON.stringify({ "status": "success", "message": "Autocrat triggered" }))
-        .setMimeType(ContentService.MimeType.JSON);
-    } else if (action === 'createOnChangeTrigger') {
-      createOnChangeTrigger();
-      return ContentService
-        .createTextOutput(JSON.stringify({ "status": "success", "message": "OnChange trigger created" }))
-        .setMimeType(ContentService.MimeType.JSON);
-    } else if (action === 'deleteAllTriggers') {
-      deleteAllTriggers();
-      return ContentService
-        .createTextOutput(JSON.stringify({ "status": "success", "message": "All triggers deleted" }))
-        .setMimeType(ContentService.MimeType.JSON);
+    const requestData = JSON.parse(e.postData.contents);
+    const action = requestData.action;
+    const payload = requestData.payload;
+    let response;
+
+    if (!action) return createJsonResponse({ status: 'error', message: 'Action not specified' });
+
+    switch (action) {
+      case 'newReservation': response = handleNewReservation(payload); break;
+      case 'completeReservation': response = handleCompleteReservation(payload); break;
+      case 'addOrUpdateItem': response = handleAddOrUpdateItem(payload); break;
+      default: response = { status: 'error', message: 'Invalid POST action' };
     }
-
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": "Action tidak valid" }))
-      .setMimeType(ContentService.MimeType.JSON);
-
+    return createJsonResponse(response);
   } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function getDataFromSheets() {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    const customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    
-    // Jika sheet belum ada, buat sheet baru
-    if (!reservationSheet || !customerSheet) {
-      setupSheets();
-      return ContentService
-        .createTextOutput(JSON.stringify({ reservations: [], customers: [] }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    // Ambil data dari sheet
-    const reservationData = reservationSheet.getDataRange().getValues();
-    const customerData = customerSheet.getDataRange().getValues();
-    
-    // Konversi ke format JSON
-    const headersReservation = reservationData.shift();
-    const headersCustomer = customerData.shift();
-    
-    const reservations = reservationData.map(row => {
-      let obj = {};
-      headersReservation.forEach((header, i) => {
-        obj[header] = row[i];
-      });
-      return obj;
-    });
-    
-    const customers = customerData.map(row => {
-      let obj = {};
-      headersCustomer.forEach((header, i) => {
-        obj[header] = row[i];
-      });
-      return obj;
-    });
-    
-    return ContentService
-      .createTextOutput(JSON.stringify({ reservations, customers }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function searchCustomers(searchTerm) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    
-    if (!customerSheet) {
-      return ContentService
-        .createTextOutput(JSON.stringify([]))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    const customerData = customerSheet.getDataRange().getValues();
-    const headers = customerData.shift();
-    
-    const results = customerData
-      .filter(row => {
-        // Cari di berbagai kolom: nama pasien, nama pemesan, telepon, Instagram, RME
-        return (
-          (row[headers.indexOf('Nama Pasien')] && row[headers.indexOf('Nama Pasien')].toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (row[headers.indexOf('Nama Pemesan')] && row[headers.indexOf('Nama Pemesan')].toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (row[headers.indexOf('Telepon')] && row[headers.indexOf('Telepon')].toString().includes(searchTerm)) ||
-          (row[headers.indexOf('Instagram')] && row[headers.indexOf('Instagram')].toString().toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (row[headers.indexOf('RME')] && row[headers.indexOf('RME')].toString().toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-      })
-      .map(row => {
-        return {
-          rme: row[headers.indexOf('RME')],
-          patientName: row[headers.indexOf('Nama Pasien')],
-          bookerName: row[headers.indexOf('Nama Pemesan')],
-          phone: row[headers.indexOf('Telepon')],
-          instagram: row[headers.indexOf('Instagram')],
-          address: row[headers.indexOf('Alamat')],
-          dob: row[headers.indexOf('Tgl Lahir')],
-          gender: row[headers.indexOf('Gender')]
-        };
-      });
-    
-    return ContentService
-      .createTextOutput(JSON.stringify(results))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function getQueueData() {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    
-    if (!reservationSheet) {
-      return ContentService
-        .createTextOutput(JSON.stringify([]))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    const reservationData = reservationSheet.getDataRange().getValues();
-    const headers = reservationData.shift();
-    
-    // Ambil hanya reservasi yang belum selesai atau hari ini
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const queueData = reservationData
-      .filter(row => {
-        const status = row[headers.indexOf('Status')];
-        const bookingDate = new Date(row[headers.indexOf('Tgl Booking')]);
-        bookingDate.setHours(0, 0, 0, 0);
-        
-        // Tampilkan reservasi yang masih dalam antrian atau sedang treatment, 
-        // atau reservasi yang sudah selesai hari ini
-        return (status !== 'Selesai') || (bookingDate.getTime() === today.getTime());
-      })
-      .map(row => {
-        return {
-          id: row[headers.indexOf('ID')],
-          rme: row[headers.indexOf('RME')],
-          patientName: row[headers.indexOf('Nama Pasien')],
-          treatment: row[headers.indexOf('Treatments')],
-          date: formatDateForDisplay(row[headers.indexOf('Tgl Booking')]),
-          time: row[headers.indexOf('Jam Booking')],
-          status: row[headers.indexOf('Status')] || 'Menunggu',
-          bookerName: row[headers.indexOf('Nama Pemesan')],
-          phone: row[headers.indexOf('Telepon')]
-        };
-      });
-    
-    return ContentService
-      .createTextOutput(JSON.stringify(queueData))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    logError('doPost', error);
+    return createJsonResponse({ status: 'error', message: error.message, stack: error.stack });
   }
 }
 
 function handleNewReservation(data) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    let reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    
-    // Jika sheet belum ada, buat sheet baru
-    if (!reservationSheet) {
-      setupSheets();
-      reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    }
-    
-    // Menambahkan data reservasi ke sheet "Reservasi"
-    const reservationHeaders = ['ID', 'Timestamp', 'RME', 'Nama Pemesan', 'Telepon', 'Instagram', 'Alamat', 'Nama Pasien', 'Tgl Lahir', 'Usia', 'Gender', 'Kategori', 'Treatments', 'Ada Keluhan', 'Detail Keluhan', 'Tgl Booking', 'Jam Booking', 'Status', 'Terapis', 'TreatmentTambahan', 'Tarif', 'Suhu', 'Berat', 'Tinggi', 'BMI', 'Alergi', 'Tekanan Darah', 'Catatan Medis'];
-    
-    // Cek jika header sudah ada
-    if (reservationSheet.getLastRow() === 0) {
-      reservationSheet.appendRow(reservationHeaders);
-    }
-    
-    const reservationValues = [
-      data.id, 
-      new Date(), 
-      data.rme, 
-      data.bookerName, 
-      data.phone, 
-      data.instagram || '', 
-      data.address || '',
-      data.patientName, 
-      data.dob, 
-      data.age, 
-      data.gender, 
-      data.category, 
-      data.treatments,
-      data.hasComplaint ? "Ya" : "Tidak", 
-      data.complaintText || '', 
-      data.bookingDate, 
-      data.bookingTime, 
-      data.status || 'Dalam Antrian', 
-      data.therapist || '',
-      data.additionalTreatment || '',
-      data.fee || '',
-      // Data medis baru
-      data.temperature || '',
-      data.weight || '',
-      data.height || '',
-      data.bmi || '',
-      data.allergy || '',
-      data.bloodPressure || '',
-      data.medicalNotes || ''
-    ];
-    
-    reservationSheet.appendRow(reservationValues);
-
-    // Cek dan tambahkan data pelanggan baru ke sheet "Pelanggan"
-    let customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    if (!customerSheet) {
-      setupSheets();
-      customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    }
-    
-    const customerHeaders = ['RME', 'Nama Pasien', 'Nama Pemesan', 'Telepon', 'Instagram', 'Alamat', 'Tgl Lahir', 'Gender'];
-    
-    // Cek jika header sudah ada di sheet pelanggan
-    if (customerSheet.getLastRow() === 0) {
-      customerSheet.appendRow(customerHeaders);
-    }
-
-    // Cari apakah RME sudah ada
-    const rmeColumn = customerSheet.getRange('A:A').getValues();
-    let rmeExists = false;
-    for (let i = 0; i < rmeColumn.length; i++) {
-      if (rmeColumn[i][0] == data.rme) {
-        rmeExists = true;
-        break;
-      }
-    }
-
-    if (!rmeExists) {
-      const customerValues = [
-        data.rme, 
-        data.patientName, 
-        data.bookerName, 
-        data.phone, 
-        data.instagram || '', 
-        data.address || '', 
-        data.dob, 
-        data.gender
-      ];
-      customerSheet.appendRow(customerValues);
-    }
-    
-    // Kembalikan data reservasi yang berhasil disimpan
-    return ContentService
-      .createTextOutput(JSON.stringify({ 
-        success: true, 
-        data: {
-          id: data.id,
-          rme: data.rme,
-          patientName: data.patientName,
-          treatment: data.treatments,
-          date: data.bookingDate,
-          time: data.bookingTime,
-          queueNumber: generateQueueNumber(data.bookingTime)
-        }
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function handleUpdateStatus(data) {
-  try {
-    const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(RESERVATION_SHEET_NAME);
-    const dataRange = sheet.getDataRange();
-    const values = dataRange.getValues();
-    const headers = values[0];
-
-    // Cari baris berdasarkan ID reservasi
-    for (let i = 1; i < values.length; i++) {
-      if (values[i][headers.indexOf('ID')] == data.id) {
-        // Update status
-        sheet.getRange(i + 1, headers.indexOf('Status') + 1).setValue(data.status);
-        
-        // Update terapis jika ada
-        if (data.therapist) {
-          sheet.getRange(i + 1, headers.indexOf('Terapis') + 1).setValue(data.therapist);
-        }
-        
-        // Update treatment tambahan jika ada
-        if (data.additionalTreatment !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('TreatmentTambahan') + 1).setValue(data.additionalTreatment);
-        }
-        
-        // Update tarif jika ada
-        if (data.fee !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Tarif') + 1).setValue(data.fee);
-        }
-        
-        // Update data medis jika ada
-        if (data.temperature !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Suhu') + 1).setValue(data.temperature);
-        }
-        if (data.weight !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Berat') + 1).setValue(data.weight);
-        }
-        if (data.height !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Tinggi') + 1).setValue(data.height);
-        }
-        if (data.bmi !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('BMI') + 1).setValue(data.bmi);
-        }
-        if (data.allergy !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Alergi') + 1).setValue(data.allergy);
-        }
-        if (data.bloodPressure !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Tekanan Darah') + 1).setValue(data.bloodPressure);
-        }
-        if (data.medicalNotes !== undefined) {
-          sheet.getRange(i + 1, headers.indexOf('Catatan Medis') + 1).setValue(data.medicalNotes);
-        }
-        
-        break;
-      }
-    }
-    
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "success" }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function handleCompleteTreatment(data) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    const dataRange = reservationSheet.getDataRange();
-    const values = dataRange.getValues();
-    const headers = values[0];
-
-    // Cari baris berdasarkan ID reservasi
-    for (let i = 1; i < values.length; i++) {
-      if (values[i][headers.indexOf('ID')] == data.reservationId) {
-        // Update status menjadi Selesai
-        reservationSheet.getRange(i + 1, headers.indexOf('Status') + 1).setValue('Selesai');
-        
-        // Update nama terapis
-        reservationSheet.getRange(i + 1, headers.indexOf('Terapis') + 1).setValue(data.therapistName);
-        
-        // Update treatment tambahan
-        if (data.additionalTreatment) {
-          reservationSheet.getRange(i + 1, headers.indexOf('TreatmentTambahan') + 1).setValue(data.additionalTreatment);
-        }
-        
-        // Update tarif
-        if (data.fee) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Tarif') + 1).setValue(data.fee);
-        }
-        
-        // Update data medis
-        if (data.temperature) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Suhu') + 1).setValue(data.temperature);
-        }
-        if (data.weight) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Berat') + 1).setValue(data.weight);
-        }
-        if (data.height) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Tinggi') + 1).setValue(data.height);
-        }
-        if (data.bmi) {
-          reservationSheet.getRange(i + 1, headers.indexOf('BMI') + 1).setValue(data.bmi);
-        }
-        if (data.allergy) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Alergi') + 1).setValue(data.allergy);
-        }
-        if (data.bloodPressure) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Tekanan Darah') + 1).setValue(data.bloodPressure);
-        }
-        if (data.medicalNotes) {
-          reservationSheet.getRange(i + 1, headers.indexOf('Catatan Medis') + 1).setValue(data.medicalNotes);
-        }
-        
-        break;
-      }
-    }
-    
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "success" }))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-function getReservationById(reservationId) {
-  try {
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    
-    if (!reservationSheet) {
-      return ContentService
-        .createTextOutput(JSON.stringify({}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    const reservationData = reservationSheet.getDataRange().getValues();
-    const headers = reservationData.shift();
-    
-    // Cari reservasi berdasarkan ID
-    const reservation = reservationData.find(row => row[headers.indexOf('ID')] === reservationId);
-    
-    if (!reservation) {
-      return ContentService
-        .createTextOutput(JSON.stringify({}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-    
-    const reservationObj = {};
-    headers.forEach((header, i) => {
-      reservationObj[header] = reservation[i];
+  const patientRecord = findOrCreatePatient(data);
+  const rme = patientRecord.rme;
+  const reservationSheet = getSheet(RESERVATION_SHEET_NAME);
+  
+  if (data.visitTime !== '24_jam') {
+    const reservations = sheetToJSON(reservationSheet);
+    const visitDateTime = new Date(`${data.visitDate}T${data.visitTime}`);
+    const conflict = reservations.filter(r => {
+        if (!r.Tanggal_Datang || r.Status === 'Selesai') return false;
+        try {
+            const existingDate = new Date(r.Tanggal_Datang);
+            return existingDate.getTime() === visitDateTime.getTime();
+        } catch (err) { return false; }
     });
-    
-    return ContentService
-      .createTextOutput(JSON.stringify(reservationObj))
-      .setMimeType(ContentService.MimeType.JSON);
-      
-  } catch (error) {
-    Logger.log(error.toString());
-    return ContentService
-      .createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// Fungsi untuk generate nomor antrian
-function generateQueueNumber(bookingTime) {
-  const timePart = bookingTime.split(':')[0];
-  const randomNum = Math.floor(Math.random() * 99) + 1;
-  return `${timePart}-${String(randomNum).padStart(2, '0')}`;
-}
-
-// Fungsi untuk format tanggal untuk display
-function formatDateForDisplay(dateValue) {
-  if (!dateValue) return '';
-  
-  const date = new Date(dateValue);
-  return Utilities.formatDate(date, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-}
-
-// Fungsi ini bisa dijalankan manual untuk setup awal sheet
-function setupSheets() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
-  // Buat sheet Reservasi jika belum ada
-  if (!ss.getSheetByName(RESERVATION_SHEET_NAME)) {
-    ss.insertSheet(RESERVATION_SHEET_NAME);
-    const reservationSheet = ss.getSheetByName(RESERVATION_SHEET_NAME);
-    const reservationHeaders = ['ID', 'Timestamp', 'RME', 'Nama Pemesan', 'Telepon', 'Instagram', 'Alamat', 'Nama Pasien', 'Tgl Lahir', 'Usia', 'Gender', 'Kategori', 'Treatments', 'Ada Keluhan', 'Detail Keluhan', 'Tgl Booking', 'Jam Booking', 'Status', 'Terapis', 'TreatmentTambahan', 'Tarif', 'Suhu', 'Berat', 'Tinggi', 'BMI', 'Alergi', 'Tekanan Darah', 'Catatan Medis'];
-    reservationSheet.appendRow(reservationHeaders);
-    reservationSheet.setFrozenRows(1);
-    reservationSheet.getRange("A1:AA1").setFontWeight("bold");
+    if (conflict.length >= 2) {
+      return { status: 'error', message: 'Slot pada jam dan tanggal tersebut sudah penuh (Maks 2 reservasi).' };
+    }
   }
 
-  // Buat sheet Pelanggan jika belum ada
-  if (!ss.getSheetByName(CUSTOMER_SHEET_NAME)) {
-    ss.insertSheet(CUSTOMER_SHEET_NAME);
-    const customerSheet = ss.getSheetByName(CUSTOMER_SHEET_NAME);
-    const customerHeaders = ['RME', 'Nama Pasien', 'Nama Pemesan', 'Telepon', 'Instagram', 'Alamat', 'Tgl Lahir', 'Gender'];
-    customerSheet.appendRow(customerHeaders);
-    customerSheet.setFrozenRows(1);
-    customerSheet.getRange("A1:H1").setFontWeight("bold");
-  }
+  const reservationId = 'RES-' + Date.now();
+  // PERBAIKAN: Membuat dan menyimpan tanggal dalam format ISO standar (UTC)
+  const visitDateTime = new Date(`${data.visitDate}T${data.visitTime}`);
+
+  const newReservation = [
+    reservationId, new Date(), 'Menunggu', rme, data.patientName, data.requesterName,
+    data.phone, data.address, 
+    !isNaN(visitDateTime.getTime()) ? visitDateTime.toISOString() : `${data.visitDate}T${data.visitTime}`, // Simpan sebagai ISO String
+    data.visitTime, JSON.stringify(data.selectedItems.map(item => item.name)),
+    data.complaint || '', data.notes || '', '', ''
+  ];
+  reservationSheet.appendRow(newReservation);
+  return { status: 'success', message: 'Reservasi berhasil dibuat.', data: { rme: rme } };
 }
 
-// ==================== FUNGSI AUTOCRAT YANG DIOPTIMALKAN ====================
+function findOrCreatePatient(data) {
+    const patientSheet = getSheet(PATIENT_SHEET_NAME);
+    const patients = sheetToJSON(patientSheet);
+    let existingPatient = patients.find(p => p.Nama_Pasien.toLowerCase() === data.patientName.toLowerCase() && p.No_HP === data.phone);
 
-// Fungsi utama untuk menjalankan Autocrat
-function autoRunAutocrat(e) {
-  try {
-    console.log("🔍 Memeriksa perubahan data...");
-    
-    // Mencari job Autocrat berdasarkan nama
-    const jobs = AutocratApp.getJobs();
-    const job = jobs.find(j => j.name === AUTOCRAT_JOB_NAME);
-
-    if (job) {
-      // Menjalankan job yang ditemukan
-      job.start();
-      console.log("✅ Autocrat job '" + AUTOCRAT_JOB_NAME + "' berhasil dijalankan pada: " + new Date());
+    if (existingPatient) {
+        return { ...existingPatient, rme: existingPatient.RME, isNew: false };
     } else {
-      console.error("❌ Job dengan nama '" + AUTOCRAT_JOB_NAME + "' tidak ditemukan.");
+        const newRME = generateRME(patientSheet);
+        const dobDate = new Date(data.dob);
+        const newPatientRow = [ newRME, data.patientName, data.requesterName, data.phone, data.instagram || '', data.address, !isNaN(dobDate.getTime()) ? dobDate.toISOString() : data.dob, new Date(), data.gender ];
+        patientSheet.appendRow(newPatientRow);
+        return { rme: newRME, isNew: true };
     }
-  } catch (error) {
-    console.error("❌ Terjadi kesalahan saat menjalankan job: ", error.toString());
-  }
 }
 
-// Fungsi untuk MEMBUAT trigger onChange (jalankan sekali saja)
-function createOnChangeTrigger() {
-  // Hapus semua trigger yang mungkin sudah ada
-  deleteAllTriggers();
-  
-  // Dapatkan spreadsheet
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
-  // Buat trigger baru yang berjalan ketika ada perubahan di spreadsheet
-  ScriptApp.newTrigger('autoRunAutocrat')
-    .forSpreadsheet(ss)
-    .onChange()
-    .create();
-  
-  console.log("✅ Trigger onChange berhasil dibuat! Autocrat akan berjalan otomatis saat ada perubahan data.");
+function handleCompleteReservation(payload) {
+    const { reservationId, therapist } = payload;
+    const reservationSheet = getSheet(RESERVATION_SHEET_NAME);
+    const data = reservationSheet.getDataRange().getValues();
+    const headers = data[0];
+    const idColIndex = headers.indexOf('ID_Reservasi');
+    if (idColIndex === -1) return { status: 'error', message: 'Kolom ID_Reservasi tidak ditemukan.'};
+    let rowIndex = data.findIndex(row => row[idColIndex] === reservationId);
+    if (rowIndex === -1) return { status: 'error', message: 'Reservasi tidak ditemukan.'};
+    const realRowIndex = rowIndex + 1;
+    const examData = { suhu: payload.temp, berat: payload.weight, tinggi: payload.height, lila: payload.lila, catatan: payload.examNotes };
+    reservationSheet.getRange(realRowIndex, headers.indexOf('Status') + 1).setValue('Selesai');
+    reservationSheet.getRange(realRowIndex, headers.indexOf('Terapis') + 1).setValue(therapist);
+    reservationSheet.getRange(realRowIndex, headers.indexOf('Data_Pemeriksaan') + 1).setValue(JSON.stringify(examData));
+    return { status: 'success', message: 'Reservasi telah diselesaikan.'};
 }
 
-// Fungsi untuk MEMBUAT trigger onFormSubmit (jika menggunakan Google Form)
-function createOnFormSubmitTrigger() {
-  // Hapus semua trigger yang mungkin sudah ada
-  deleteAllTriggers();
-  
-  // Dapatkan spreadsheet
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  
-  // Buat trigger baru yang berjalan ketika form disubmit
-  ScriptApp.newTrigger('autoRunAutocrat')
-    .forSpreadsheet(ss)
-    .onFormSubmit()
-    .create();
-  
-  console.log("✅ Trigger onFormSubmit berhasil dibuat! Autocrat akan berjalan otomatis saat form disubmit.");
-}
-
-// Fungsi untuk MENGHAPUS semua trigger
-function deleteAllTriggers() {
-  const triggers = ScriptApp.getProjectTriggers();
-  for (const trigger of triggers) {
-    if (trigger.getHandlerFunction() === "autoRunAutocrat") {
-      ScriptApp.deleteTrigger(trigger);
+function handleAddOrUpdateItem(payload) {
+    const { type, id, name, category, description } = payload;
+    const sheetName = type === 'treatment' ? TREATMENT_SHEET_NAME : PRODUCT_SHEET_NAME;
+    const sheet = getSheet(sheetName);
+    if (id) {
+        const data = sheet.getDataRange().getValues();
+        const rowIndex = data.findIndex(row => row[0].toString() === id.toString());
+        if (rowIndex !== -1) {
+            const realRowIndex = rowIndex + 1;
+            const rowData = type === 'treatment' ? [id, category, name, description] : [id, name, description];
+            sheet.getRange(realRowIndex, 1, 1, rowData.length).setValues([rowData]);
+            return { status: 'success', message: 'Data berhasil diperbarui.' };
+        } else return { status: 'error', message: 'Item tidak ditemukan.' };
+    } else {
+        const newId = (type.charAt(0).toUpperCase()) + '-' + Date.now();
+        const newRow = type === 'treatment' ? [newId, category, name, description] : [newId, name, description];
+        sheet.appendRow(newRow);
+        return { status: 'success', message: 'Data berhasil ditambahkan.' };
     }
-  }
-  console.log("✅ Semua trigger autocrat dihapus.");
 }
 
-// Tambahkan fungsi ini untuk memeriksa trigger yang aktif
-function checkActiveTriggers() {
-  const triggers = ScriptApp.getProjectTriggers();
-  console.log("Trigger yang aktif:");
-  const result = [];
-  triggers.forEach(trigger => {
-    const triggerInfo = {
-      function: trigger.getHandlerFunction(),
-      type: trigger.getEventType().toString()
-    };
-    console.log(`- Fungsi: ${triggerInfo.function}, Tipe: ${triggerInfo.type}`);
-    result.push(triggerInfo);
-  });
-  return result;
+function getReservations() { return { status: 'success', data: sheetToJSON(getSheet(RESERVATION_SHEET_NAME)) }; }
+function getItems() { return { status: 'success', data: { treatments: sheetToJSON(getSheet(TREATMENT_SHEET_NAME)), products: sheetToJSON(getSheet(PRODUCT_SHEET_NAME)) } }; }
+function getPatients(query) {
+    const patients = sheetToJSON(getSheet(PATIENT_SHEET_NAME));
+    if (!query) return { status: 'success', data: patients };
+    const lowerCaseQuery = query.toLowerCase();
+    const filtered = patients.filter(p => (p.RME && p.RME.toLowerCase().includes(lowerCaseQuery)) || (p.Nama_Pasien && p.Nama_Pasien.toLowerCase().includes(lowerCaseQuery)));
+    return { status: 'success', data: filtered };
 }
 
-// ==================== FUNGSI TRIGGER LAMA (UNTUK KOMPATIBILITAS) ====================
+function getRekapData() {
+    const reservations = sheetToJSON(getSheet(RESERVATION_SHEET_NAME));
+    const patients = sheetToJSON(getSheet(PATIENT_SHEET_NAME));
+    const treatments = sheetToJSON(getSheet(TREATMENT_SHEET_NAME));
+    const treatmentCategoryMap = treatments.reduce((map, item) => { map[item.Nama] = item.Kategori; return map; }, {});
+    const patientGenderMap = patients.reduce((map, p) => { map[p.RME] = p.Jenis_Kelamin; return map; }, {});
+    const stats = { categoryCounts: {}, treatmentNameCounts: {}, genderCounts: {'Wanita': 0, 'Pria': 0}, dayCounts: {'Minggu': 0, 'Senin': 0, 'Selasa': 0, 'Rabu': 0, 'Kamis': 0, 'Jumat': 0, 'Sabtu': 0}, peakHourCounts: {}, monthCounts: {}, therapistCounts: {}, dailyTrend: {}, calendarData: {} };
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    for(let i=0; i<24; i++) { stats.peakHourCounts[i.toString().padStart(2,'0') + ':00'] = 0; }
+    
+    reservations.forEach(res => {
+        // PERBAIKAN: Pemeriksaan tanggal yang lebih kuat untuk mencegah error
+        if (!res.Tanggal_Datang) return;
+        const visitDate = new Date(res.Tanggal_Datang);
+        if (isNaN(visitDate.getTime())) return; // Lewati jika tanggal tidak valid
 
-// Fungsi untuk MEMBUAT trigger time-based (jalankan sekali saja)
-function createTimeBasedTrigger() {
-  // Hapus semua trigger yang mungkin sudah ada
-  deleteAllTriggers();
-  
-  // Buat trigger baru yang berjalan setiap menit
-  ScriptApp.newTrigger('autoRunAutocrat')
-    .timeBased()
-    .everyMinutes(1)
-    .create();
-  
-  console.log("✅ Trigger time-based berhasil dibuat! Autocrat akan berjalan otomatis setiap menit.");
+        const dateKey = visitDate.toISOString().split('T')[0];
+        stats.calendarData[dateKey] = (stats.calendarData[dateKey] || 0) + 1;
+        try {
+            JSON.parse(res.Items || '[]').forEach(itemName => {
+                stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1;
+                const category = treatmentCategoryMap[itemName];
+                if (category) stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
+            });
+        } catch(e) {}
+        const gender = patientGenderMap[res.RME];
+        if (gender && stats.genderCounts.hasOwnProperty(gender)) stats.genderCounts[gender]++;
+        stats.dayCounts[days[visitDate.getDay()]]++;
+        const hourKey = visitDate.getHours().toString().padStart(2, '0') + ':00';
+        if (stats.peakHourCounts.hasOwnProperty(hourKey)) stats.peakHourCounts[hourKey]++;
+        const monthYearKey = `${months[visitDate.getMonth()]} ${visitDate.getFullYear()}`;
+        stats.monthCounts[monthYearKey] = (stats.monthCounts[monthYearKey] || 0) + 1;
+        if (res.Status === 'Selesai' && res.Terapis) { stats.therapistCounts[res.Terapis] = (stats.therapistCounts[res.Terapis] || 0) + 1; }
+        stats.dailyTrend[dateKey] = (stats.dailyTrend[dateKey] || 0) + 1;
+    });
+    const sortedDailyTrend = Object.keys(stats.dailyTrend).sort().reduce((obj, key) => { obj[key] = stats.dailyTrend[key]; return obj; }, {});
+    stats.dailyTrend = sortedDailyTrend;
+    return { status: 'success', data: {stats, rawReservations: reservations} };
 }
 
-// Fungsi untuk MENGHAPUS trigger time-based
-function deleteTimeBasedTrigger() {
-  deleteAllTriggers();
-  console.log("✅ Time-based trigger dihapus.");
-}
+function createJsonResponse(data) { return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON); }
+function getSheet(sheetName) { const ss = SpreadsheetApp.getActiveSpreadsheet(); let sheet = ss.getSheetByName(sheetName); if (!sheet) { sheet = ss.insertSheet(sheetName); const headers = getHeadersForSheet(sheetName); if (headers) { sheet.appendRow(headers); sheet.setFrozenRows(1); sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold'); } } return sheet; }
+function getHeadersForSheet(sheetName) { const headerMap = { [PATIENT_SHEET_NAME]: ['RME', 'Nama_Pasien', 'Nama_Pemesan', 'No_HP', 'Instagram', 'Alamat', 'Tanggal_Lahir', 'Tanggal_Registrasi', 'Jenis_Kelamin'], [RESERVATION_SHEET_NAME]: ['ID_Reservasi', 'Timestamp', 'Status', 'RME', 'Nama_Pasien', 'Nama_Pemesan', 'No_HP', 'Alamat', 'Tanggal_Datang', 'Jam_Datang', 'Items', 'Keluhan', 'Catatan', 'Terapis', 'Data_Pemeriksaan'], [TREATMENT_SHEET_NAME]: ['ID_Treatment', 'Kategori', 'Nama', 'Deskripsi'], [PRODUCT_SHEET_NAME]: ['ID_Produk', 'Nama', 'Deskripsi'], [LOG_SHEET_NAME]: ['Timestamp', 'Function', 'Message', 'ErrorStack'] }; return headerMap[sheetName]; }
+function sheetToJSON(sheet) { const data = sheet.getDataRange().getValues(); if (data.length < 2) return []; const headers = data.shift(); return data.map(row => { let obj = {}; headers.forEach((col, index) => { obj[col] = row[index]; }); return obj; }); }
+function generateRME(sheet) { const lastRow = sheet.getLastRow(); if (lastRow < 2) return 'NBLH-001'; try { const lastRME = sheet.getRange(lastRow, 1).getValue(); const lastNumber = parseInt(lastRME.split('-')[1]); const newNumber = (lastNumber + 1).toString().padStart(3, '0'); return `NBLH-${newNumber}`; } catch(e) { return `NBLH-${(lastRow).toString().padStart(3, '0')}`; } }
+function logError(functionName, error) { try { getSheet(LOG_SHEET_NAME).appendRow([new Date(), functionName, error.message, error.stack]); } catch(e) { Logger.log("Gagal menulis log: " + e.message); } }
+function setupInitialSheet() { getSheet(PATIENT_SHEET_NAME); getSheet(RESERVATION_SHEET_NAME); getSheet(TREATMENT_SHEET_NAME); getSheet(PRODUCT_SHEET_NAME); getSheet(LOG_SHEET_NAME); SpreadsheetApp.flush(); Logger.log('Setup completed.'); }
+
