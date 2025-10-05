@@ -12,16 +12,33 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
-        body { font-family: 'Poppins', sans-serif; background-color: #FFF8F9; }
-        .theme-pink { color: #FF6B8A; }
-        .bg-theme-pink { background-color: #FF6B8A; }
-        .border-theme-pink { border-color: #FF6B8A; }
-        .active-tab { border-bottom: 3px solid #FF6B8A; color: #FF6B8A; font-weight: 600; }
+        :root {
+            --bg-primary: #FFF8F9; --bg-secondary: #ffffff; --bg-card: #ffffff;
+            --text-primary: #111827; --text-secondary: #6b7280; --text-accent: #FF6B8A;
+            --border-primary: #e5e7eb; --border-accent: #FF6B8A; --scroll-track: #FFF0F5; --scroll-thumb: #FFC0CB;
+        }
+        html.dark {
+            --bg-primary: #111827; --bg-secondary: #1f2937; --bg-card: #1f2937;
+            --text-primary: #f9fafb; --text-secondary: #d1d5db; --text-accent: #f9a8d4;
+            --border-primary: #4b5563; --border-accent: #f9a8d4; --scroll-track: #374151; --scroll-thumb: #4b5563;
+        }
+        body { font-family: 'Poppins', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); transition: background-color 0.3s, color 0.3s; }
+        .bg-secondary { background-color: var(--bg-secondary); }
+        .bg-card { background-color: var(--bg-card); }
+        .border-primary { border-color: var(--border-primary); }
+        .text-secondary { color: var(--text-secondary); }
+        .theme-pink { color: var(--text-accent); }
+        .bg-theme-pink { background-color: var(--border-accent); }
+        .border-theme-pink { border-color: var(--border-accent); }
+        .active-tab { border-bottom: 3px solid var(--border-accent); color: var(--text-accent); font-weight: 600; }
         .tab { border-bottom: 3px solid transparent; }
+        .input-field { background-color: var(--bg-secondary); border-color: var(--border-primary); color: var(--text-primary); }
+        .input-readonly { background-color: #e5e7eb; }
+        html.dark .input-readonly { background-color: #374151; }
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #FFF0F5; }
-        ::-webkit-scrollbar-thumb { background: #FFC0CB; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #FF6B8A; }
+        ::-webkit-scrollbar-track { background: var(--scroll-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-accent); }
         #opening-animation { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #FFF8F9; z-index: 100; display: flex; justify-content: center; align-items: center; flex-direction: column; transition: opacity 1s ease-out; }
         @keyframes blossom-fall { 0% { transform: translateY(-100%) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(360deg); opacity: 0; } }
         .petal { position: absolute; top: -10%; background-color: #FFB7C5; border-radius: 50% 0; width: 20px; height: 20px; animation: blossom-fall 7s linear infinite; }
@@ -29,11 +46,6 @@
         #opening-animation .logo { animation: logo-fade-in 2s ease-in-out; }
         .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #FF6B8A; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .calendar-day { aspect-ratio: 1/1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; font-size: 0.8rem; }
-        .calendar-day.other-month { color: #cbd5e0; }
-        .calendar-day .day-number { font-weight: 600; }
-        .calendar-day .res-count { font-size: 0.7rem; margin-top: 2px; }
     </style>
 </head>
 <body class="overscroll-none">
@@ -41,18 +53,20 @@
     <div id="opening-animation">
         <div class="petal" style="left: 10%; animation-delay: 0s;"></div><div class="petal" style="left: 20%; animation-delay: 2s; width: 15px; height: 15px;"></div><div class="petal" style="left: 30%; animation-delay: 1s;"></div><div class="petal" style="left: 40%; animation-delay: 4s; width: 10px; height: 10px;"></div><div class="petal" style="left: 50%; animation-delay: 0.5s;"></div><div class="petal" style="left: 60%; animation-delay: 3s;"></div><div class="petal" style="left: 70%; animation-delay: 1.5s; width: 18px; height: 18px;"></div><div class="petal" style="left: 80%; animation-delay: 5s;"></div>
         <div class="logo text-center">
-            <h1 class="text-4xl font-bold theme-pink">Klinik Nabilah Pulungan</h1>
+            <h1 class="text-4xl font-bold" style="color: #FF6B8A;">Klinik Nabilah Pulungan</h1>
             <p class="text-gray-500 mt-2">Reservasi Online</p>
         </div>
     </div>
 
     <div id="main-content" class="hidden">
         <div class="container mx-auto max-w-lg p-4 pb-24">
-            <header id="main-header" class="text-center my-4"></header>
+            <header id="main-header" class="text-center my-4 relative">
+                <!-- Theme toggle will be inserted here by JS -->
+            </header>
             <div id="search-container" class="mb-4 relative hidden">
-                <input type="text" id="search-patient-input" placeholder="Cari pasien (RME, Nama...)" class="w-full p-3 pl-10 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300">
-                <i class="fas fa-search absolute left-4 top-3.5 text-gray-400"></i>
-                <div id="search-results" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg hidden"></div>
+                <input type="text" id="search-patient-input" placeholder="Cari pasien (RME, Nama...)" class="w-full p-3 pl-10 border rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 input-field">
+                <i class="fas fa-search absolute left-4 top-3.5 text-secondary"></i>
+                <div id="search-results" class="absolute z-10 w-full mt-1 border rounded-lg shadow-lg hidden bg-secondary border-primary"></div>
             </div>
             <main id="app-content"></main>
         </div>
@@ -64,13 +78,13 @@
              </button>
          </div>
 
-        <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-white border-t border-gray-200 shadow-md">
+        <nav class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto border-t shadow-md bg-secondary border-primary">
             <div class="flex justify-around">
-                <button data-tab="home" class="nav-tab active-tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-home text-xl"></i><span class="block text-xs mt-1">Home</span></button>
-                <button data-tab="reservations" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-list-alt text-xl"></i><span class="block text-xs mt-1">Reservasi</span></button>
-                <button data-tab="rekap" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-chart-pie text-xl"></i><span class="block text-xs mt-1">Laporan</span></button>
-                <button data-tab="management" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-cogs text-xl"></i><span class="block text-xs mt-1">Manajemen</span></button>
-                <button data-tab="guide" class="nav-tab tab flex-1 py-2 px-1 text-center text-gray-600"><i class="fas fa-book text-xl"></i><span class="block text-xs mt-1">Panduan</span></button>
+                <button data-tab="home" class="nav-tab active-tab flex-1 py-2 px-1 text-center text-secondary"><i class="fas fa-home text-xl"></i><span class="block text-xs mt-1">Home</span></button>
+                <button data-tab="reservations" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary"><i class="fas fa-list-alt text-xl"></i><span class="block text-xs mt-1">Reservasi</span></button>
+                <button data-tab="rekap" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary"><i class="fas fa-chart-pie text-xl"></i><span class="block text-xs mt-1">Laporan</span></button>
+                <button data-tab="management" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary"><i class="fas fa-cogs text-xl"></i><span class="block text-xs mt-1">Manajemen</span></button>
+                <button data-tab="guide" class="nav-tab tab flex-1 py-2 px-1 text-center text-secondary"><i class="fas fa-book text-xl"></i><span class="block text-xs mt-1">Panduan</span></button>
             </div>
         </nav>
     </div>
@@ -83,11 +97,36 @@
         let state = {
             activeTab: 'home', activeHomeTab: 'treatments', treatmentFilter: 'All',
             selectedItems: [],
-            data: { treatments: [], products: [], searchResults: [] },
+            data: { treatments: [], products: [], searchResults: [], allReservations: [], allPatients: [] },
             rekapData: null, currentCalendarDate: new Date()
         };
 
+        // --- THEME SWITCHER LOGIC ---
+        function applyInitialTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+            updateThemeIcon(savedTheme);
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const newTheme = isDark ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            updateThemeIcon(newTheme);
+            if (state.activeTab === 'rekap') { // Redraw charts for new theme
+                renderAllRekapVisuals();
+            }
+        }
+        
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('theme-toggle-icon');
+            if (icon) {
+                icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
+            applyInitialTheme();
             setTimeout(() => {
                 const openingScreen = document.getElementById('opening-animation');
                 openingScreen.style.opacity = '0';
@@ -103,7 +142,6 @@
         function setupEventListeners() {
             document.querySelectorAll('.nav-tab').forEach(tab => tab.addEventListener('click', () => navigateTo(tab.dataset.tab)));
             document.getElementById('search-patient-input').addEventListener('input', handleSearch);
-            // PERBAIKAN: Listener untuk memilih pasien dari hasil pencarian
             document.getElementById('search-results').addEventListener('click', (e) => {
                 const target = e.target.closest('.search-result-item');
                 if (target && target.dataset.index) {
@@ -150,9 +188,11 @@
             updateCartFab();
 
             const header = document.getElementById('main-header');
+            const themeButton = `<button id="theme-toggle" onclick="toggleTheme()" class="absolute top-0 right-0 p-2 text-lg text-secondary"><i id="theme-toggle-icon" class="fas fa-moon"></i></button>`;
+            
             switch (tabName) {
                 case 'home':
-                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Reservasi Online</h1><p class="text-gray-500">Pilih treatment atau produk Anda</p>`;
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Reservasi Online</h1><p class="text-secondary">Pilih treatment atau produk Anda</p>${themeButton}`;
                     const itemsResult = await callBackend('GET', 'getItems');
                     if (itemsResult.status === 'success') {
                         state.data.treatments = itemsResult.data.treatments; state.data.products = itemsResult.data.products;
@@ -162,12 +202,17 @@
                     } else appContent.innerHTML = `<p class="text-center text-red-500">${itemsResult.message}</p>`;
                     break;
                 case 'reservations':
-                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Daftar Reservasi</h1><p class="text-gray-500">Kelola status reservasi pasien</p>`;
-                    const resResult = await callBackend('GET', 'getReservations');
-                    appContent.innerHTML = renderReservationsPage(resResult.data || []);
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Daftar Reservasi</h1><p class="text-secondary">Kelola status reservasi pasien</p>${themeButton}`;
+                    const [resResult, patientsResult] = await Promise.all([
+                        callBackend('GET', 'getReservations'),
+                        callBackend('GET', 'getPatients', { query: '' })
+                    ]);
+                    state.data.allReservations = resResult.data || [];
+                    state.data.allPatients = patientsResult.data || [];
+                    appContent.innerHTML = renderReservationsPage(state.data.allReservations);
                     break;
                 case 'rekap':
-                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Laporan & Statistik</h1><p class="text-gray-500">Analisis data reservasi klinik</p>`;
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Laporan & Statistik</h1><p class="text-secondary">Analisis data reservasi klinik</p>${themeButton}`;
                     const rekapResult = await callBackend('GET', 'getRekapData');
                     if (rekapResult.status === 'success') {
                         state.rekapData = rekapResult.data;
@@ -175,9 +220,8 @@
                         renderAllRekapVisuals();
                     } else appContent.innerHTML = `<p class="text-center text-red-500">${rekapResult.message}</p>`;
                     break;
-                // ... (case 'management' dan 'guide' tidak berubah)
                 case 'management':
-                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Manajemen Data</h1><p class="text-gray-500">Kelola data treatment dan produk</p>`;
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Manajemen Data</h1><p class="text-secondary">Kelola data treatment dan produk</p>${themeButton}`;
                     const manageResult = await callBackend('GET', 'getItems');
                     if (manageResult.status === 'success') {
                         state.data.treatments = manageResult.data.treatments; state.data.products = manageResult.data.products;
@@ -185,10 +229,11 @@
                     } else appContent.innerHTML = `<p class="text-center text-red-500">${manageResult.message}</p>`;
                     break;
                 case 'guide':
-                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Panduan Aplikasi</h1><p class="text-gray-500">Cara instalasi dan penggunaan</p>`;
+                    header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Panduan Aplikasi</h1><p class="text-secondary">Cara instalasi dan penggunaan</p>${themeButton}`;
                     appContent.innerHTML = renderGuidePage();
                     break;
             }
+             updateThemeIcon(localStorage.getItem('theme') || 'light');
         }
         
         async function handleSearch(e) {
@@ -201,29 +246,22 @@
             const result = await callBackend('GET', 'getPatients', { query: query });
             resultsContainer.innerHTML = '';
             if (result.status === 'success' && result.data.length > 0) {
-                // PERBAIKAN: Simpan hasil pencarian ke state
                 state.data.searchResults = result.data;
-                // PERBAIKAN: Tambahkan data-index untuk setiap item
                 result.data.forEach((p, index) => {
-                    resultsContainer.innerHTML += `<div data-index="${index}" class="p-3 hover:bg-pink-100 cursor-pointer border-b search-result-item"><p class="font-semibold">${p.Nama_Pasien} <span class="text-sm text-gray-500">(${p.RME})</span></p><p class="text-sm text-gray-600">${p.Alamat || ''}</p></div>`;
+                    resultsContainer.innerHTML += `<div data-index="${index}" class="p-3 hover:bg-pink-100 dark:hover:bg-gray-700 cursor-pointer border-b border-primary search-result-item"><p class="font-semibold">${p.Nama_Pasien} <span class="text-sm text-secondary">(${p.RME})</span></p><p class="text-sm text-secondary">${p.Alamat || ''}</p></div>`;
                 });
                 resultsContainer.classList.remove('hidden');
             } else {
                 state.data.searchResults = [];
-                resultsContainer.innerHTML = `<div class="p-3 text-gray-500">Tidak ada hasil ditemukan.</div>`;
+                resultsContainer.innerHTML = `<div class="p-3 text-secondary">Tidak ada hasil ditemukan.</div>`;
                 resultsContainer.classList.remove('hidden');
             }
         }
 
-        // FUNGSI BARU: Untuk memilih pasien dan mengisi form
         function selectPatientAndFillForm(index) {
             const patient = state.data.searchResults[index];
             if (!patient) return;
-
-            // Buka form reservasi
             showReservationForm();
-            
-            // Tunggu sesaat agar modal sempat dirender
             setTimeout(() => {
                 const form = document.getElementById('reservation-form');
                 if (form) {
@@ -233,36 +271,93 @@
                     form.address.value = patient.Alamat || '';
                     form.patientName.value = patient.Nama_Pasien || '';
                     form.gender.value = patient.Jenis_Kelamin || 'Wanita';
-                    
-                    // Format tanggal lahir
                     if (patient.Tanggal_Lahir) {
                         const dob = new Date(patient.Tanggal_Lahir);
                         if (!isNaN(dob.getTime())) {
                             form.dob.value = dob.toISOString().split('T')[0];
-                            // Trigger event change untuk update usia
                             form.dob.dispatchEvent(new Event('change'));
                         }
                     }
                 }
-            }, 100); // delay 100ms
-
-            // Sembunyikan hasil pencarian
+            }, 100);
             document.getElementById('search-results').classList.add('hidden');
             document.getElementById('search-patient-input').value = '';
         }
 
         function renderReservationsPage(reservations) {
-            if (!reservations || reservations.length === 0) return `<div class="text-center p-8 text-gray-500"><i class="fas fa-calendar-times fa-3x mb-3"></i><p>Belum ada data reservasi.</p></div>`;
-            const statusColors = { 'Menunggu': 'text-blue-500 border-blue-200 bg-blue-50', 'Selesai': 'text-green-500 border-green-200 bg-green-50' };
+            if (!reservations || reservations.length === 0) return `<div class="text-center p-8 text-secondary"><i class="fas fa-calendar-times fa-3x mb-3"></i><p>Belum ada data reservasi.</p></div>`;
+            const statusStyles = { 
+                'Menunggu': 'text-blue-500 border-blue-200 bg-blue-50 dark:bg-opacity-10', 
+                'Selesai': 'text-green-500 border-green-200 bg-green-50 dark:bg-opacity-10' 
+            };
             return `<div class="space-y-4">${reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).map(res => {
-                // PERBAIKAN: Pemeriksaan tanggal sebelum ditampilkan
                 const visitDate = new Date(res.Tanggal_Datang);
                 const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID',{dateStyle:'medium', timeStyle:'short'}) : 'Tanggal Invalid';
                 
-                return `<div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-start"><div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-gray-500">(${res.RME})</span></p><p class="text-sm text-gray-600">${JSON.parse(res.Items || '[]').join(', ')}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusColors[res.Status] || 'text-gray-500'}">${res.Status}</span></div><p class="text-sm text-gray-600 mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p>${res.Status !== 'Selesai' ? `<div class="mt-3 text-right"><button onclick="showCompleteModal('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button></div>`: ''}</div>`;
+                return `<div class="p-4 rounded-lg shadow bg-card"><div class="flex justify-between items-start"><div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${JSON.parse(res.Items || '[]').join(', ')}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span></div><p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p><div class="mt-3 flex justify-end items-center gap-2"><button onclick="showReservationDetailsModal('${res.ID_Reservasi}')" class="text-blue-500 hover:underline text-sm font-medium">Lihat Detail</button>${res.Status !== 'Selesai' ? `<button onclick="showCompleteModal('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button>`: ''}</div></div>`;
             }).join('')}</div>`;
         }
-        
+
+        function showReservationDetailsModal(reservationId) {
+            const res = state.data.allReservations.find(r => r.ID_Reservasi === reservationId);
+            const patient = state.data.allPatients.find(p => p.RME === res.RME);
+            if (!res) return showToast('Reservasi tidak ditemukan', 'error');
+
+            const examData = res.Data_Pemeriksaan ? JSON.parse(res.Data_Pemeriksaan) : null;
+            const dob = patient ? new Date(patient.Tanggal_Lahir) : null;
+            const displayDob = dob && !isNaN(dob.getTime()) ? dob.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A';
+            const visitDate = new Date(res.Tanggal_Datang);
+            const displayVisitDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' }) + ' WIB' : 'N/A';
+            
+            const modalHtml = `
+            <div id="detail-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
+                <div class="bg-card rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto">
+                    <div class="p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold theme-pink">Detail Reservasi</h2>
+                            <button onclick="closeModal('detail-modal')" class="text-secondary text-2xl">&times;</button>
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="font-semibold border-b border-primary pb-1 mb-2">Informasi Pasien</h3>
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                    <strong>Nama Pasien:</strong> <span>${res.Nama_Pasien}</span>
+                                    <strong>RME:</strong> <span>${res.RME}</span>
+                                    <strong>Tanggal Lahir:</strong> <span>${displayDob}</span>
+                                    <strong>No. HP:</strong> <span>${res.No_HP}</span>
+                                    <strong>Alamat:</strong> <span class="col-span-2">${res.Alamat}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold border-b border-primary pb-1 mb-2">Informasi Kunjungan</h3>
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                    <strong>Waktu Kunjungan:</strong> <span class="col-span-2">${displayVisitDate}</span>
+                                    <strong>Items:</strong> <span class="col-span-2">${JSON.parse(res.Items || '[]').join(', ')}</span>
+                                    <strong>Status:</strong> <span>${res.Status}</span>
+                                    ${res.Terapis ? `<strong>Terapis/Bidan:</strong> <span>${res.Terapis}</span>` : ''}
+                                </div>
+                            </div>
+                            ${examData ? `
+                            <div>
+                                <h3 class="font-semibold border-b border-primary pb-1 mb-2">Data Pemeriksaan</h3>
+                                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                                    ${examData.suhu ? `<strong>Suhu:</strong> <span>${examData.suhu} °C</span>` : ''}
+                                    ${examData.berat ? `<strong>Berat:</strong> <span>${examData.berat} kg</span>` : ''}
+                                    ${examData.tinggi ? `<strong>Tinggi:</strong> <span>${examData.tinggi} cm</span>` : ''}
+                                    ${examData.lila ? `<strong>LILA:</strong> <span>${examData.lila} cm</span>` : ''}
+                                    ${examData.catatan ? `<strong class="col-span-2">Catatan:</strong> <p class="col-span-2 text-secondary">${examData.catatan}</p>` : ''}
+                                </div>
+                            </div>` : ''}
+                        </div>
+                         <div class="mt-6 flex justify-end">
+                            <button type="button" onclick="closeModal('detail-modal')" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Tutup</button>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            document.getElementById('modals-container').innerHTML = modalHtml;
+        }
+
         function populateTimeOptions() {
             const timeSelect = document.querySelector('select[name="visitTime"]');
             if(!timeSelect) return;
@@ -275,35 +370,80 @@
             let startTime = new Date(); startTime.setHours(8, 0, 0, 0);
             let endTime = new Date(); endTime.setHours(21, 30, 0, 0);
             while(startTime <= endTime) {
-                // PERBAIKAN: Koreksi pada regex
                 const timeString = startTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':');
                 timeSelect.appendChild(new Option(timeString, timeString));
                 startTime.setMinutes(startTime.getMinutes() + 30);
             }
         }
+        
+        function updateAgeAndDay(e) {
+            const dobInput = e.target.value;
+            const ageOutput = document.getElementById('age-output');
+            if (!dobInput) { ageOutput.value = ''; return; }
+            
+            const dob = new Date(dobInput);
+            const now = new Date();
 
-        // --- SISA FUNGSI (sebagian besar tidak berubah, hanya perbaikan kecil) ---
-        function renderHomePage() { return `<div class="flex border-b-2 border-gray-200 mb-4"><button data-tab="treatments" class="home-tab active-tab flex-1 p-3 text-center text-gray-700">Treatments</button><button data-tab="products" class="home-tab tab flex-1 p-3 text-center text-gray-700">Produk</button></div><div id="home-content"></div>`; }
+            if (isNaN(dob.getTime()) || dob > now) {
+                ageOutput.value = 'Tanggal lahir tidak valid';
+                return;
+            }
+
+            let years = now.getFullYear() - dob.getFullYear();
+            let months = now.getMonth() - dob.getMonth();
+            let days = now.getDate() - dob.getDate();
+
+            if (days < 0) {
+                months--;
+                days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+            }
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+            ageOutput.value = `${years} tahun, ${months} bulan, ${days} hari`;
+        }
+
+        function renderHomePage() { return `<div class="flex border-b-2 border-primary mb-4"><button data-tab="treatments" class="home-tab active-tab flex-1 p-3 text-center text-secondary">Treatments</button><button data-tab="products" class="home-tab tab flex-1 p-3 text-center text-secondary">Produk</button></div><div id="home-content"></div>`; }
         function setupHomeEventListeners() { document.querySelectorAll('.home-tab').forEach(tab => { tab.addEventListener('click', () => { state.activeHomeTab = tab.dataset.tab; document.querySelectorAll('.home-tab').forEach(t => { t.classList.remove('active-tab'); t.classList.add('tab'); }); tab.classList.add('active-tab'); tab.classList.remove('tab'); if (state.activeHomeTab === 'treatments') renderTreatments(); else renderProducts(); }); }); }
-        function renderTreatments() { const categories = ['All', ...new Set(state.data.treatments.map(t => t.Kategori))]; const filtered = state.treatmentFilter === 'All' ? state.data.treatments : state.data.treatments.filter(t => t.Kategori === state.treatmentFilter); let filterHtml = `<div class="mb-4 overflow-x-auto whitespace-nowrap pb-2">${categories.map(cat => `<button data-category="${cat}" class="category-filter inline-block px-4 py-2 mr-2 rounded-full shadow-sm text-sm ${state.treatmentFilter === cat ? 'bg-theme-pink text-white' : 'bg-white text-gray-700'}">${cat}</button>`).join('')}</div>`; let itemsHtml = `<div class="grid grid-cols-1 gap-4">${filtered.map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Treatment); return `<div data-id="${item.ID_Treatment}" data-type="treatment" class="item-card bg-white rounded-lg shadow overflow-hidden flex cursor-pointer ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFC0CB/FF6B8A?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold text-gray-800">${item.Nama}</h3><p class="text-sm text-gray-600">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-gray-500 py-8">Tidak ada treatment.</p>`}</div>`; document.getElementById('home-content').innerHTML = filterHtml + itemsHtml; setupItemSelection(); }
-        function renderProducts() { let itemsHtml = `<div class="grid grid-cols-1 gap-4">${state.data.products.map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Produk); return `<div data-id="${item.ID_Produk}" data-type="product" class="item-card bg-white rounded-lg shadow overflow-hidden flex cursor-pointer ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFFACD/FFD700?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold text-gray-800">${item.Nama}</h3><p class="text-sm text-gray-600">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-gray-500 py-8">Tidak ada produk.</p>`}</div>`; document.getElementById('home-content').innerHTML = itemsHtml; setupItemSelection(); }
+        function renderTreatments() { const categories = ['All', ...new Set(state.data.treatments.map(t => t.Kategori))]; const filtered = state.treatmentFilter === 'All' ? state.data.treatments : state.data.treatments.filter(t => t.Kategori === state.treatmentFilter); let filterHtml = `<div class="mb-4 overflow-x-auto whitespace-nowrap pb-2">${categories.map(cat => `<button data-category="${cat}" class="category-filter inline-block px-4 py-2 mr-2 rounded-full shadow-sm text-sm ${state.treatmentFilter === cat ? 'bg-theme-pink text-white' : 'bg-card text-primary'}">${cat}</button>`).join('')}</div>`; let itemsHtml = `<div class="grid grid-cols-1 gap-4">${filtered.map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Treatment); return `<div data-id="${item.ID_Treatment}" data-type="treatment" class="item-card rounded-lg shadow overflow-hidden flex cursor-pointer bg-card ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFC0CB/FF6B8A?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold">${item.Nama}</h3><p class="text-sm text-secondary">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-secondary py-8">Tidak ada treatment.</p>`}</div>`; document.getElementById('home-content').innerHTML = filterHtml + itemsHtml; setupItemSelection(); }
+        function renderProducts() { let itemsHtml = `<div class="grid grid-cols-1 gap-4">${state.data.products.map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Produk); return `<div data-id="${item.ID_Produk}" data-type="product" class="item-card rounded-lg shadow overflow-hidden flex cursor-pointer bg-card ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFFACD/FFD700?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold">${item.Nama}</h3><p class="text-sm text-secondary">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-secondary py-8">Tidak ada produk.</p>`}</div>`; document.getElementById('home-content').innerHTML = itemsHtml; setupItemSelection(); }
         function setupItemSelection() { document.querySelectorAll('.category-filter').forEach(btn => btn.addEventListener('click', (e) => { state.treatmentFilter = e.target.dataset.category; renderTreatments(); })); document.querySelectorAll('.item-card').forEach(card => card.addEventListener('click', () => { const itemId = card.dataset.id; const itemIndex = state.selectedItems.findIndex(i => i.id === itemId); if (itemIndex > -1) { state.selectedItems.splice(itemIndex, 1); card.classList.remove('ring-2', 'ring-pink-500'); } else { const type = card.dataset.type; const source = type === 'treatment' ? state.data.treatments : state.data.products; const idField = type === 'treatment' ? 'ID_Treatment' : 'ID_Produk'; const itemData = source.find(i => i[idField] === itemId); if (itemData) { state.selectedItems.push({ id: itemId, name: itemData.Nama, category: itemData.Kategori || null }); card.classList.add('ring-2', 'ring-pink-500'); } } updateCartFab(); })); }
         function updateCartFab() { const fab = document.getElementById('booking-cart-fab'); const count = document.getElementById('cart-count'); fab.classList.toggle('hidden', state.selectedItems.length === 0 || state.activeTab !== 'home'); count.textContent = state.selectedItems.length; }
-        function renderRekapPage() { return `<div class="space-y-6"><div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Grafik Statistik</h3><button onclick="printSection('rekap-charts', 'Laporan Grafik Statistik')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="rekap-charts" class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="md:col-span-2"><canvas id="dailyTrendChart"></canvas></div><div><canvas id="categoryChart"></canvas></div><div><canvas id="treatmentNameChart"></canvas></div><div><canvas id="genderChart"></canvas></div><div><canvas id="dayChart"></canvas></div><div class="md:col-span-2"><canvas id="hourChart"></canvas></div><div><canvas id="monthChart"></canvas></div><div><canvas id="therapistChart"></canvas></div></div></div><div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Rekap Kalender</h3><button onclick="printSection('calendar-container', 'Laporan Rekap Kalender')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="calendar-container"></div></div><div class="bg-white p-4 rounded-lg shadow"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Rekap Tabel</h3><button onclick="printSection('table-container', 'Laporan Rekap Tabel')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="table-container" class="max-h-96 overflow-auto"></div></div></div>`; }
-        function renderAllRekapVisuals() { const { stats, rawReservations } = state.rekapData; createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend), Object.values(stats.dailyTrend), 'Grafik Naik/Turun Total Reservasi'); createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Survey Kategori Treatment'); createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Survey Nama Treatment Terpopuler'); createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Survey Jenis Kelamin Pengunjung'); createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Survey Hari Teramai'); createChart('hourChart', 'line', Object.keys(stats.peakHourCounts).sort(), Object.keys(stats.peakHourCounts).sort().map(key => stats.peakHourCounts[key]), 'Survey Jam Teramai'); createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Survey Bulan Teramai'); createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Survey Kinerja Terapis/Bidan'); renderCalendar(); renderRekapTable(rawReservations); }
-        function createChart(canvasId, type, labels, data, title) { const ctx = document.getElementById(canvasId); if (!ctx || !data || data.length === 0 || Object.values(data).every(v=>v===0)) { if(ctx) ctx.parentElement.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm font-semibold">${title}<br/><span class="font-normal">(Tidak ada data)</span></div>`; return; } const colors = ['#FF6B8A', '#FFC0CB', '#FFDAB9', '#E6E6FA', '#98FB98', '#ADD8E6', '#F0E68C']; new Chart(ctx, { type, data: { labels, datasets: [{ label: 'Jumlah', data, backgroundColor: colors, borderColor: '#FFF8F9', borderWidth: 2, tension: 0.3 }] }, options: { responsive: true, plugins: { legend: { display: ['pie', 'doughnut'].includes(type) }, title: { display: true, text: title, font: { size: 16 } } } } }); }
-        function renderCalendar() { const container = document.getElementById('calendar-container'); if (!container) return; const { calendarData } = state.rekapData.stats; const date = state.currentCalendarDate; const month = date.getMonth(); const year = date.getFullYear(); const firstDay = new Date(year, month, 1); const lastDay = new Date(year, month + 1, 0); const daysInMonth = lastDay.getDate(); const startDayOfWeek = firstDay.getDay(); let html = `<div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-left"></i></button><h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'})}</h4><button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-100"><i class="fas fa-chevron-right"></i></button></div><div class="calendar-grid text-center font-semibold text-sm mb-2">${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div>${d}</div>`).join('')}</div><div class="calendar-grid">`; for (let i = 0; i < startDayOfWeek; i++) { html += `<div class="calendar-day other-month"></div>`; } for (let day = 1; day <= daysInMonth; day++) { const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const count = calendarData[dateKey] || 0; let colorClass = 'bg-gray-100'; if (count > 0) colorClass = 'bg-green-200'; if (count > 2) colorClass = 'bg-yellow-200'; if (count > 5) colorClass = 'bg-red-300'; html += `<div class="calendar-day ${colorClass}"><span class="day-number">${day}</span>${count > 0 ? `<span class="res-count">${count} res.</span>` : ''}</div>`; } html += `</div>`; container.innerHTML = html; }
+        
+        function renderRekapPage() { return `<div class="space-y-6"><div class="p-4 rounded-lg shadow bg-card"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Grafik Statistik</h3><button onclick="printSection('rekap-charts', 'Laporan Grafik Statistik')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="rekap-charts" class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="md:col-span-2"><canvas id="dailyTrendChart"></canvas></div><div><canvas id="categoryChart"></canvas></div><div><canvas id="treatmentNameChart"></canvas></div><div><canvas id="genderChart"></canvas></div><div><canvas id="dayChart"></canvas></div><div class="md:col-span-2"><canvas id="hourChart"></canvas></div><div><canvas id="monthChart"></canvas></div><div><canvas id="therapistChart"></canvas></div><div><canvas id="ageChart"></canvas></div><div class="md:col-span-2"><canvas id="addressChart"></canvas></div></div></div><div class="p-4 rounded-lg shadow bg-card"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Rekap Kalender</h3><button onclick="printSection('calendar-container', 'Laporan Rekap Kalender')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="calendar-container"></div></div><div class="p-4 rounded-lg shadow bg-card"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg theme-pink">Rekap Tabel</h3><button onclick="printSection('table-container', 'Laporan Rekap Tabel')" class="bg-theme-pink text-white px-3 py-1 text-sm rounded-lg shadow flex items-center gap-2"><i class="fas fa-print"></i> Cetak</button></div><div id="table-container" class="max-h-96 overflow-auto"></div></div></div>`; }
+        function renderAllRekapVisuals() { const { stats, rawReservations } = state.rekapData; createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend), Object.values(stats.dailyTrend), 'Grafik Naik/Turun Total Reservasi'); createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Survey Kategori Treatment'); createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Survey Nama Treatment Terpopuler'); createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Survey Jenis Kelamin Pengunjung'); createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Survey Hari Teramai'); createChart('hourChart', 'line', Object.keys(stats.peakHourCounts).sort(), Object.keys(stats.peakHourCounts).sort().map(key => stats.peakHourCounts[key]), 'Survey Jam Teramai'); createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Survey Bulan Teramai'); createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Survey Kinerja Terapis/Bidan'); createChart('ageChart', 'bar', Object.keys(stats.ageDemographics), Object.values(stats.ageDemographics), 'Survey Demografi Usia Pasien'); createChart('addressChart', 'bar', Object.keys(stats.addressDemographics), Object.values(stats.addressDemographics), 'Survey Domisili Pasien Teratas'); renderCalendar(); renderRekapTable(rawReservations); }
+        function createChart(canvasId, type, labels, data, title) {
+            const ctx = document.getElementById(canvasId);
+            if (!ctx || !data || data.length === 0 || Object.values(data).every(v=>v===0)) {
+                if(ctx) ctx.parentElement.innerHTML = `<div class="text-center text-gray-400 py-8 text-sm font-semibold">${title}<br/><span class="font-normal">(Tidak ada data)</span></div>`;
+                return;
+            }
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            const textColor = isDark ? '#f9fafb' : '#111827';
+            
+            if (window.myCharts && window.myCharts[canvasId]) {
+                window.myCharts[canvasId].destroy();
+            }
+            if (!window.myCharts) window.myCharts = {};
+
+            const colors = ['#FF6B8A', '#FFC0CB', '#FFDAB9', '#E6E6FA', '#98FB98', '#ADD8E6', '#F0E68C', '#fca5a5', '#93c5fd', '#a78bfa', '#fde047'];
+            const chart = new Chart(ctx, { type, data: { labels, datasets: [{ label: 'Jumlah', data, backgroundColor: colors, borderColor: isDark ? '#1f2937' : '#ffffff', borderWidth: 2, tension: 0.3 }] }, options: { indexAxis: ['bar', 'horizontalBar'].includes(type) && labels.length > 5 ? 'y' : 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: ['pie', 'doughnut'].includes(type), labels: { color: textColor } }, title: { display: true, text: title, font: { size: 16 }, color: textColor } }, scales: { y: { ticks: { color: textColor }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } } } });
+            window.myCharts[canvasId] = chart;
+        }
+
+        function renderCalendar() { const container = document.getElementById('calendar-container'); if (!container) return; const { calendarData } = state.rekapData.stats; const date = state.currentCalendarDate; const month = date.getMonth(); const year = date.getFullYear(); const firstDay = new Date(year, month, 1); const lastDay = new Date(year, month + 1, 0); const daysInMonth = lastDay.getDate(); const startDayOfWeek = firstDay.getDay(); let html = `<div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chevron-left"></i></button><h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'})}</h4><button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chevron-right"></i></button></div><div class="grid grid-cols-7 text-center font-semibold text-sm mb-2">${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div>${d}</div>`).join('')}</div><div class="grid grid-cols-7 gap-1">`; for (let i = 0; i < startDayOfWeek; i++) { html += `<div></div>`; } for (let day = 1; day <= daysInMonth; day++) { const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const count = calendarData[dateKey] || 0; let colorClass = 'bg-gray-200 dark:bg-gray-700'; if (count > 0) colorClass = 'bg-green-200 dark:bg-green-800'; if (count > 2) colorClass = 'bg-yellow-200 dark:bg-yellow-700'; if (count > 5) colorClass = 'bg-red-300 dark:bg-red-800'; html += `<div class="aspect-square flex flex-col justify-center items-center rounded-lg ${colorClass} text-xs"><span class="font-semibold text-sm">${day}</span>${count > 0 ? `<span class="mt-1">${count} res</span>` : ''}</div>`; } html += `</div>`; container.innerHTML = html; }
         function changeMonth(direction) { state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + direction); renderCalendar(); }
-        function renderRekapTable(reservations) { const container = document.getElementById('table-container'); if (!container || !reservations || reservations.length === 0) { if(container) container.innerHTML = `<p class="text-center text-gray-500 py-4">Tidak ada data.</p>`; return; } let tableHTML = `<table class="w-full text-sm text-left text-gray-600"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-4 py-2">Tgl Datang</th><th class="px-4 py-2">Pasien</th><th class="px-4 py-2">Items</th><th class="px-4 py-2">Status</th></tr></thead><tbody>`; reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => { const d = new Date(res.Tanggal_Datang); const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID'); tableHTML += `<tr class="bg-white border-b"><td class="px-4 py-2">${dateStr}</td><td class="px-4 py-2 font-medium">${res.Nama_Pasien}</td><td class="px-4 py-2">${JSON.parse(res.Items || '[]').join(', ')}</td><td class="px-4 py-2">${res.Status}</td></tr>`; }); tableHTML += `</tbody></table>`; container.innerHTML = tableHTML; }
-        async function printSection(elementId, title) { const { jsPDF } = window.jspdf; const elementToPrint = document.getElementById(elementId); if (!elementToPrint) return; showToast('Mempersiapkan PDF...', 'info'); const pdf = new jsPDF('p', 'mm', 'a4'); pdf.setFontSize(16); pdf.text(title, 105, 15, null, null, 'center'); pdf.setFontSize(10); pdf.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 105, 22, null, null, 'center'); const canvas = await html2canvas(elementToPrint, { scale: 2, useCORS: true, backgroundColor: '#ffffff' }); const imgData = canvas.toDataURL('image/png'); const imgProps = pdf.getImageProperties(imgData); const pdfWidth = pdf.internal.pageSize.getWidth() - 20; const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width; let currentHeight = 30; if (pdfHeight < (pdf.internal.pageSize.getHeight() - currentHeight - 10)) { pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdfHeight); } else { showToast('Konten terlalu panjang, mungkin terpotong.', 'warning'); pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdf.internal.pageSize.getHeight() - currentHeight - 10); } pdf.save(`${title.replace(/ /g, '-')}.pdf`); }
-        function renderGuidePage() { return `<div class="bg-white p-6 rounded-lg shadow space-y-6"><div><h2 class="text-xl font-bold theme-pink border-b-2 border-pink-200 pb-2 mb-3">Panduan Instalasi Backend</h2><ol class="list-decimal list-inside space-y-2 text-gray-700"><li>Buka <a href="https://sheets.new" target="_blank" class="text-blue-500 hover:underline">Google Sheets</a> & buat spreadsheet baru.</li><li>Beri nama file (misal: 'KlinikNabilahDB').</li><li>Klik <strong>Ekstensi > Apps Script</strong>.</li><li>Salin-tempel seluruh isi file <code>gs.js</code>.</li><li>Klik ikon <strong>Simpan proyek</strong>.</li><li>Klik tombol <strong>Deploy > Deploy baru</strong>.</li><li>Pilih jenis deploy: <strong>Aplikasi Web</strong>.</li><li>Pada 'Siapa yang memiliki akses', pilih <strong>Siapa saja</strong>.</li><li>Klik <strong>Deploy</strong> & Izinkan akses.</li><li>Salin <strong>URL Aplikasi Web</strong> yang muncul.</li><li>Buka file <code>index.html</code> ini, cari <code>SCRIPT_URL</code> & tempel URL Anda.</li><li><strong>PENTING:</strong> Kembali ke Apps Script, pilih fungsi <code>setupInitialSheet</code>, lalu klik <strong>Jalankan</strong> untuk membuat sheet awal.</li><li>Jika mengubah <code>gs.js</code>, Anda harus <strong>Deploy Ulang</strong> (Deploy > Kelola Deployment > Edit > versi 'Baru' > Deploy).</li></ol></div><div><h2 class="text-xl font-bold theme-pink border-b-2 border-pink-200 pb-2 mb-3">Panduan Penggunaan</h2><ul class="list-disc list-inside space-y-2 text-gray-700"><li><strong>Manajemen Data:</strong> Isi daftar Treatment & Produk di tab 'Manajemen' agar muncul di halaman Home.</li><li><strong>Home:</strong> Pilih item. Tombol reservasi (<i class="fas fa-calendar-check"></i>) akan muncul.</li><li><strong>Daftar Reservasi:</strong> Lihat & selesaikan reservasi.</li><li><strong>Laporan:</strong> Lihat statistik berdasarkan data reservasi.</li></ul></div></div>`; }
-        function showReservationForm() { const items = state.selectedItems.map(item => item.name).join('\n'); const modalHtml = `<div id="reservation-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto"><form id="reservation-form" class="p-6 space-y-4"><h2 class="text-2xl font-bold mb-4 theme-pink">Form Reservasi</h2><div><label class="block text-sm font-medium">Nama Pemesan</label><input type="text" name="requesterName" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">No. HP/WA</label><input type="tel" name="phone" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">Instagram (opsional)</label><input type="text" name="instagram" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></div><div><label class="block text-sm font-medium">Alamat Domisili</label><input type="text" name="address" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><hr/><div><label class="block text-sm font-medium">Nama Pasien</label><input type="text" name="patientName" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">Tgl Lahir Pasien</label><input type="date" name="dob" id="dob-input" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><div><label class="block text-sm font-medium">Jenis Kelamin</label><select name="gender" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required><option value="Wanita">Wanita</option><option value="Pria">Pria</option></select></div><div><label class="block text-sm font-medium">Usia Detail</label><input type="text" id="age-output" class="mt-1 w-full bg-gray-100 rounded-md" readonly></div><div><label class="block text-sm font-medium">Item Dipilih</label><textarea class="mt-1 w-full bg-gray-100 rounded-md" rows="2" readonly>${items}</textarea></div><div><label class="block text-sm font-medium">Rencana Tgl Datang</label><input type="date" name="visitDate" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required min="${new Date().toISOString().split('T')[0]}"></div><div><label class="block text-sm font-medium">Pilih Jam</label><select name="visitTime" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></select></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('reservation-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Pesan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; populateTimeOptions(); document.getElementById('dob-input').addEventListener('change', updateAgeAndDay); document.getElementById('reservation-form').addEventListener('submit', handleReservationSubmit); }
-        function updateAgeAndDay(e) { const dob = new Date(e.target.value); if (isNaN(dob.getTime())) return; const now = new Date(); let years = now.getFullYear() - dob.getFullYear(); let months = now.getMonth() - dob.getMonth(); let days = now.getDate() - dob.getDate(); if (days < 0) { months--; const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0); days += prevMonth.getDate(); } if (months < 0) { years--; months += 12; } const totalDays = Math.floor((now - dob) / (1000 * 60 * 60 * 24)); const weeks = Math.floor(totalDays / 7); document.getElementById('age-output').value = `${years} tahun, ${months} bulan, ${weeks % 52} pekan, ${days} hari`; }
+        function renderRekapTable(reservations) { const container = document.getElementById('table-container'); if (!container || !reservations || reservations.length === 0) { if(container) container.innerHTML = `<p class="text-center text-secondary py-4">Tidak ada data.</p>`; return; } let tableHTML = `<table class="w-full text-sm text-left text-secondary"><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-2">Tgl Datang</th><th class="px-4 py-2">Pasien</th><th class="px-4 py-2">Items</th><th class="px-4 py-2">Status</th></tr></thead><tbody>`; reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => { const d = new Date(res.Tanggal_Datang); const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID'); tableHTML += `<tr class="border-b border-primary bg-card"><td class="px-4 py-2">${dateStr}</td><td class="px-4 py-2 font-medium text-primary">${res.Nama_Pasien}</td><td class="px-4 py-2">${JSON.parse(res.Items || '[]').join(', ')}</td><td class="px-4 py-2">${res.Status}</td></tr>`; }); tableHTML += `</tbody></table>`; container.innerHTML = tableHTML; }
+        async function printSection(elementId, title) { const { jsPDF } = window.jspdf; const elementToPrint = document.getElementById(elementId); if (!elementToPrint) return; showToast('Mempersiapkan PDF...', 'info'); const pdf = new jsPDF('p', 'mm', 'a4'); pdf.setFontSize(16); pdf.text(title, 105, 15, null, null, 'center'); pdf.setFontSize(10); pdf.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 105, 22, null, null, 'center'); const canvas = await html2canvas(elementToPrint, { scale: 2, useCORS: true, backgroundColor: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff' }); const imgData = canvas.toDataURL('image/png'); const imgProps = pdf.getImageProperties(imgData); const pdfWidth = pdf.internal.pageSize.getWidth() - 20; const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width; let currentHeight = 30; if (pdfHeight < (pdf.internal.pageSize.getHeight() - currentHeight - 10)) { pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdfHeight); } else { showToast('Konten terlalu panjang, mungkin terpotong.', 'warning'); pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdf.internal.pageSize.getHeight() - currentHeight - 10); } pdf.save(`${title.replace(/ /g, '-')}.pdf`); }
+        function renderGuidePage() { return `<div class="p-6 rounded-lg shadow space-y-6 bg-card"><div><h2 class="text-xl font-bold theme-pink border-b-2 border-pink-200 pb-2 mb-3">Panduan Instalasi Backend</h2><ol class="list-decimal list-inside space-y-2 text-secondary"><li>Buka <a href="https://sheets.new" target="_blank" class="text-blue-500 hover:underline">Google Sheets</a> & buat spreadsheet baru.</li><li>Beri nama file (misal: 'KlinikNabilahDB').</li><li>Klik <strong>Ekstensi > Apps Script</strong>.</li><li>Salin-tempel seluruh isi file <code>gs.js</code>.</li><li>Klik ikon <strong>Simpan proyek</strong>.</li><li>Klik tombol <strong>Deploy > Deploy baru</strong>.</li><li>Pilih jenis deploy: <strong>Aplikasi Web</strong>.</li><li>Pada 'Siapa yang memiliki akses', pilih <strong>Siapa saja</strong>.</li><li>Klik <strong>Deploy</strong> & Izinkan akses.</li><li>Salin <strong>URL Aplikasi Web</strong> yang muncul.</li><li>Buka file <code>index.html</code> ini, cari <code>SCRIPT_URL</code> & tempel URL Anda.</li><li><strong>PENTING:</strong> Kembali ke Apps Script, pilih fungsi <code>setupInitialSheet</code>, lalu klik <strong>Jalankan</strong> untuk membuat sheet awal.</li><li>Jika mengubah <code>gs.js</code>, Anda harus <strong>Deploy Ulang</strong> (Deploy > Kelola Deployment > Edit > versi 'Baru' > Deploy).</li></ol></div><div><h2 class="text-xl font-bold theme-pink border-b-2 border-pink-200 pb-2 mb-3">Panduan Penggunaan</h2><ul class="list-disc list-inside space-y-2 text-secondary"><li><strong>Manajemen Data:</strong> Isi daftar Treatment & Produk di tab 'Manajemen' agar muncul di halaman Home.</li><li><strong>Home:</strong> Pilih item. Tombol reservasi (<i class="fas fa-calendar-check"></i>) akan muncul.</li><li><strong>Daftar Reservasi:</strong> Lihat & selesaikan reservasi.</li><li><strong>Laporan:</strong> Lihat statistik berdasarkan data reservasi.</li></ul></div></div>`; }
+        function showReservationForm() { const items = state.selectedItems.map(item => item.name).join('\n'); const modalHtml = `<div id="reservation-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto bg-card"><form id="reservation-form" class="p-6 space-y-4"><h2 class="text-2xl font-bold mb-4 theme-pink">Form Reservasi</h2><div><label class="block text-sm font-medium">Nama Pemesan</label><input type="text" name="requesterName" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required></div><div><label class="block text-sm font-medium">No. HP/WA</label><input type="tel" name="phone" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required></div><div><label class="block text-sm font-medium">Instagram (opsional)</label><input type="text" name="instagram" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field"></div><div><label class="block text-sm font-medium">Alamat Domisili</label><input type="text" name="address" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required></div><hr class="border-primary"/><div><label class="block text-sm font-medium">Nama Pasien</label><input type="text" name="patientName" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required></div><div><label class="block text-sm font-medium">Tgl Lahir Pasien</label><input type="date" name="dob" id="dob-input" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required></div><div><label class="block text-sm font-medium">Jenis Kelamin</label><select name="gender" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required><option value="Wanita">Wanita</option><option value="Pria">Pria</option></select></div><div><label class="block text-sm font-medium">Usia Detail</label><input type="text" id="age-output" class="mt-1 w-full rounded-md input-readonly" readonly></div><div><label class="block text-sm font-medium">Item Dipilih</label><textarea class="mt-1 w-full rounded-md input-readonly" rows="2" readonly>${items}</textarea></div><div><label class="block text-sm font-medium">Rencana Tgl Datang</label><input type="date" name="visitDate" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required min="${new Date().toISOString().split('T')[0]}"></div><div><label class="block text-sm font-medium">Pilih Jam</label><select name="visitTime" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field" required></select></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('reservation-modal')" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Pesan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; populateTimeOptions(); document.getElementById('dob-input').addEventListener('change', updateAgeAndDay); document.getElementById('reservation-form').addEventListener('submit', handleReservationSubmit); }
         async function handleReservationSubmit(e) { e.preventDefault(); const formData = new FormData(e.target); const data = Object.fromEntries(formData.entries()); data.selectedItems = state.selectedItems; const result = await callBackend('POST', 'newReservation', data); if (result.status === 'success') { closeModal('reservation-modal'); showToast(`Reservasi berhasil! RME: ${result.data.rme}`, 'success'); state.selectedItems = []; updateCartFab(); navigateTo('reservations'); } else { showToast(`Gagal: ${result.message}`, 'error'); } }
-        function showCompleteModal(reservationId) { const modalHtml = `<div id="complete-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg m-4"><form id="complete-form" class="p-6"><h2 class="text-2xl font-bold mb-4 theme-pink">Selesaikan Reservasi</h2><input type="hidden" name="reservationId" value="${reservationId}"><div class="space-y-4"><div><label class="block text-sm font-medium">Nama Terapis/Bidan</label><input type="text" name="therapist" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" required></div><h3 class="text-lg font-semibold pt-2 border-t">Data Pemeriksaan</h3><div class="grid grid-cols-2 gap-4"><div><label class="text-sm">Suhu (°C)</label><input type="number" step="0.1" name="temp" class="mt-1 w-full border-gray-300 rounded-md"></div><div><label class="text-sm">Berat (kg)</label><input type="number" step="0.1" name="weight" class="mt-1 w-full border-gray-300 rounded-md"></div><div><label class="text-sm">Tinggi (cm)</label><input type="number" step="0.1" name="height" class="mt-1 w-full border-gray-300 rounded-md"></div><div><label class="text-sm">LILA (cm)</label><input type="number" step="0.1" name="lila" class="mt-1 w-full border-gray-300 rounded-md"></div></div><div><label class="text-sm">Catatan</label><textarea name="examNotes" class="mt-1 w-full border-gray-300 rounded-md" rows="2"></textarea></div></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('complete-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Simpan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; document.getElementById('complete-form').addEventListener('submit', handleCompleteSubmit); }
+        function showCompleteModal(reservationId) { const modalHtml = `<div id="complete-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card"><form id="complete-form" class="p-6"><h2 class="text-2xl font-bold mb-4 theme-pink">Selesaikan Reservasi</h2><input type="hidden" name="reservationId" value="${reservationId}"><div class="space-y-4"><div><label class="block text-sm font-medium">Nama Terapis/Bidan</label><input type="text" name="therapist" class="mt-1 w-full rounded-md shadow-sm input-field" required></div><h3 class="text-lg font-semibold pt-2 border-t border-primary">Data Pemeriksaan</h3><div class="grid grid-cols-2 gap-4"><div><label class="text-sm">Suhu (°C)</label><input type="number" step="0.1" name="temp" class="mt-1 w-full rounded-md input-field"></div><div><label class="text-sm">Berat (kg)</label><input type="number" step="0.1" name="weight" class="mt-1 w-full rounded-md input-field"></div><div><label class="text-sm">Tinggi (cm)</label><input type="number" step="0.1" name="height" class="mt-1 w-full rounded-md input-field"></div><div><label class="text-sm">LILA (cm)</label><input type="number" step="0.1" name="lila" class="mt-1 w-full rounded-md input-field"></div></div><div><label class="text-sm">Catatan</label><textarea name="examNotes" class="mt-1 w-full rounded-md input-field" rows="2"></textarea></div></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('complete-modal')" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Simpan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; document.getElementById('complete-form').addEventListener('submit', handleCompleteSubmit); }
         async function handleCompleteSubmit(e) { e.preventDefault(); const formData = new FormData(e.target); const data = Object.fromEntries(formData.entries()); const result = await callBackend('POST', 'completeReservation', data); if (result.status === 'success') { closeModal('complete-modal'); showToast(result.message, 'success'); navigateTo('reservations'); } else { showToast(`Gagal: ${result.message}`, 'error'); } }
-        function renderManagementPage() { const {treatments, products} = state.data; return `<div class="space-y-6"><div><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold text-gray-700">Manajemen Treatment</h2><button onclick="showItemFormModal(null, 'treatment')" class="bg-theme-pink text-white px-3 py-1 rounded-lg shadow text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div><div class="space-y-2">${treatments.map(t => `<div class="bg-white p-3 rounded-lg shadow flex justify-between items-center"><div><p class="font-semibold">${t.Nama}</p><p class="text-xs text-gray-500">${t.Kategori}</p></div><button onclick='showItemFormModal(${JSON.stringify(t)}, "treatment")' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button></div>`).join('') || '<p class="text-center text-gray-500 text-sm py-4">Belum ada data.</p>'}</div></div><div><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold text-gray-700">Manajemen Produk</h2><button onclick="showItemFormModal(null, 'product')" class="bg-theme-pink text-white px-3 py-1 rounded-lg shadow text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div><div class="space-y-2">${products.map(p => `<div class="bg-white p-3 rounded-lg shadow flex justify-between items-center"><p class="font-semibold">${p.Nama}</p><button onclick='showItemFormModal(${JSON.stringify(p)}, "product")' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button></div>`).join('') || '<p class="text-center text-gray-500 text-sm py-4">Belum ada data.</p>'}</div></div></div>`; }
-        function showItemFormModal(item, type) { const isEdit = item !== null; const title = `${isEdit ? 'Edit' : 'Tambah'} ${type === 'treatment' ? 'Treatment' : 'Produk'}`; const itemCategories = ['Baby Treatment', 'Kid Treatment', 'Mom Treatment', 'Ladies Treatment', 'Ibu Hamil/Nifas Treatment', 'Tindik Treatment', 'Paket Bersalin/Partus', 'USG', 'Homecare Treatment', 'Kelas Senam', 'Umum/Lainnya']; const modalHtml = `<div id="item-form-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg m-4"><form id="item-form" class="p-6"><h2 class="text-2xl font-bold mb-4 theme-pink">${title}</h2><input type="hidden" name="id" value="${isEdit ? (item.ID_Treatment || item.ID_Produk) : ''}"><input type="hidden" name="type" value="${type}"><div class="space-y-4"><div><label class="block text-sm font-medium text-gray-700">Nama</label><input type="text" name="name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" value="${isEdit ? item.Nama : ''}" required></div>${type === 'treatment' ? `<div><label class="block text-sm font-medium text-gray-700">Kategori</label><select name="category" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>${itemCategories.map(cat => `<option value="${cat}" ${isEdit && item.Kategori === cat ? 'selected' : ''}>${cat}</option>`).join('')}</select></div>` : ''}<div><label class="block text-sm font-medium text-gray-700">Deskripsi</label><textarea name="description" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" rows="3" required>${isEdit ? item.Deskripsi : ''}</textarea></div></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('item-form-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Simpan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; document.getElementById('item-form').addEventListener('submit', handleItemFormSubmit); }
+        function renderManagementPage() { const {treatments, products} = state.data; return `<div class="space-y-6"><div><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold">Manajemen Treatment</h2><button onclick="showItemFormModal(null, 'treatment')" class="bg-theme-pink text-white px-3 py-1 rounded-lg shadow text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div><div class="space-y-2">${treatments.map(t => `<div class="p-3 rounded-lg shadow flex justify-between items-center bg-card"><div><p class="font-semibold">${t.Nama}</p><p class="text-xs text-secondary">${t.Kategori}</p></div><button onclick='showItemFormModal(${JSON.stringify(t)}, "treatment")' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button></div>`).join('') || '<p class="text-center text-secondary text-sm py-4">Belum ada data.</p>'}</div></div><div><div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold">Manajemen Produk</h2><button onclick="showItemFormModal(null, 'product')" class="bg-theme-pink text-white px-3 py-1 rounded-lg shadow text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div><div class="space-y-2">${products.map(p => `<div class="p-3 rounded-lg shadow flex justify-between items-center bg-card"><p class="font-semibold">${p.Nama}</p><button onclick='showItemFormModal(${JSON.stringify(p)}, "product")' class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button></div>`).join('') || '<p class="text-center text-secondary text-sm py-4">Belum ada data.</p>'}</div></div></div>`; }
+        function showItemFormModal(item, type) { const isEdit = item !== null; const title = `${isEdit ? 'Edit' : 'Tambah'} ${type === 'treatment' ? 'Treatment' : 'Produk'}`; const itemCategories = ['Baby Treatment', 'Kid Treatment', 'Mom Treatment', 'Ladies Treatment', 'Ibu Hamil/Nifas Treatment', 'Tindik Treatment', 'Paket Bersalin/Partus', 'USG', 'Homecare Treatment', 'Kelas Senam', 'Umum/Lainnya']; const modalHtml = `<div id="item-form-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50"><div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card"><form id="item-form" class="p-6"><h2 class="text-2xl font-bold mb-4 theme-pink">${title}</h2><input type="hidden" name="id" value="${isEdit ? (item.ID_Treatment || item.ID_Produk) : ''}"><input type="hidden" name="type" value="${type}"><div class="space-y-4"><div><label class="block text-sm font-medium">Nama</label><input type="text" name="name" class="mt-1 block w-full rounded-md shadow-sm input-field" value="${isEdit ? item.Nama : ''}" required></div>${type === 'treatment' ? `<div><label class="block text-sm font-medium">Kategori</label><select name="category" class="mt-1 block w-full rounded-md shadow-sm input-field" required>${itemCategories.map(cat => `<option value="${cat}" ${isEdit && item.Kategori === cat ? 'selected' : ''}>${cat}</option>`).join('')}</select></div>` : ''}<div><label class="block text-sm font-medium">Deskripsi</label><textarea name="description" class="mt-1 block w-full rounded-md shadow-sm input-field" rows="3" required>${isEdit ? item.Deskripsi : ''}</textarea></div></div><div class="mt-6 flex justify-end gap-3"><button type="button" onclick="closeModal('item-form-modal')" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Batal</button><button type="submit" class="px-4 py-2 bg-theme-pink text-white rounded-lg">Simpan</button></div></form></div></div>`; document.getElementById('modals-container').innerHTML = modalHtml; document.getElementById('item-form').addEventListener('submit', handleItemFormSubmit); }
         async function handleItemFormSubmit(e) { e.preventDefault(); const formData = new FormData(e.target); const data = Object.fromEntries(formData.entries()); const result = await callBackend('POST', 'addOrUpdateItem', data); if(result.status === 'success') { closeModal('item-form-modal'); showToast(result.message, 'success'); navigateTo('management'); } else { showToast(`Gagal: ${result.message}`, 'error'); } }
         function setLoading(isLoading) { document.getElementById('global-loader').style.display = isLoading ? 'flex' : 'none'; }
         function showToast(message, type = 'info') { const toast = document.createElement('div'); const colors = {'success':'bg-green-500', 'error':'bg-red-500', 'warning':'bg-yellow-500', 'info':'bg-blue-500'}; toast.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-[101] transition-transform transform translate-x-full`; toast.textContent = message; document.body.appendChild(toast); setTimeout(() => toast.classList.remove('translate-x-full'), 100); setTimeout(() => { toast.classList.add('translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3500); }
@@ -311,4 +451,3 @@
     </script>
 </body>
 </html>
-
