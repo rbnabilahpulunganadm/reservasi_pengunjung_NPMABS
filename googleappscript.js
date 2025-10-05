@@ -27,6 +27,7 @@ function doGet(e) {
       case 'getPatients': response = getPatients(payload.query); break;
       case 'getItems': response = getItems(); break;
       case 'getRekapData': response = getRekapData(); break;
+      case 'getPatientHistory': response = getPatientHistory(payload); break; 
       default: response = { status: 'error', message: 'Invalid GET action' };
     }
     return createJsonResponse(response);
@@ -56,6 +57,18 @@ function doPost(e) {
     logError('doPost', error);
     return createJsonResponse({ status: 'error', message: error.message, stack: error.stack });
   }
+}
+
+function getPatientHistory(payload) {
+  if (!payload || !payload.rme) {
+    return { status: 'error', message: 'RME tidak valid.' };
+  }
+  const reservations = sheetToJSON(getSheet(RESERVATION_SHEET_NAME));
+  const patientHistory = reservations
+    .filter(res => res.RME === payload.rme)
+    .sort((a, b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang));
+  
+  return { status: 'success', data: patientHistory };
 }
 
 function handleNewReservation(data) {
@@ -95,7 +108,14 @@ function handleNewReservation(data) {
 function findOrCreatePatient(data) {
     const patientSheet = getSheet(PATIENT_SHEET_NAME);
     const patients = sheetToJSON(patientSheet);
-    let existingPatient = patients.find(p => p.Nama_Pasien.toLowerCase() === data.patientName.toLowerCase() && p.No_HP === data.phone);
+
+    // --- PERBAIKAN DI SINI ---
+    // Memastikan perbandingan Nama (case-insensitive) dan No HP (sebagai string)
+    let existingPatient = patients.find(p => 
+        p.Nama_Pasien.toLowerCase() === data.patientName.toLowerCase() && 
+        String(p.No_HP).trim() === String(data.phone).trim()
+    );
+    // -------------------------
 
     if (existingPatient) {
         return { ...existingPatient, rme: existingPatient.RME, isNew: false };
@@ -107,6 +127,7 @@ function findOrCreatePatient(data) {
         return { rme: newRME, isNew: true };
     }
 }
+
 
 function handleCompleteReservation(payload) {
     const { reservationId, therapist } = payload;
@@ -243,3 +264,4 @@ function sheetToJSON(sheet) { const data = sheet.getDataRange().getValues(); if 
 function generateRME(sheet) { const lastRow = sheet.getLastRow(); if (lastRow < 2) return 'NBLH-001'; try { const lastRME = sheet.getRange(lastRow, 1).getValue(); const lastNumber = parseInt(lastRME.split('-')[1]); const newNumber = (lastNumber + 1).toString().padStart(3, '0'); return `NBLH-${newNumber}`; } catch(e) { return `NBLH-${(lastRow).toString().padStart(3, '0')}`; } }
 function logError(functionName, error) { try { getSheet(LOG_SHEET_NAME).appendRow([new Date(), functionName, error.message, error.stack]); } catch(e) { Logger.log("Gagal menulis log: " + e.message); } }
 function setupInitialSheet() { getSheet(PATIENT_SHEET_NAME); getSheet(RESERVATION_SHEET_NAME); getSheet(TREATMENT_SHEET_NAME); getSheet(PRODUCT_SHEET_NAME); getSheet(LOG_SHEET_NAME); SpreadsheetApp.flush(); Logger.log('Setup completed.'); }
+
