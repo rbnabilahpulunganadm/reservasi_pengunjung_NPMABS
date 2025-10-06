@@ -85,7 +85,7 @@
         /* Style untuk ikon loading (spinner) */
         .loader { border: 4px solid #f3f3f3; border-radius: 50%; border-top: 4px solid #FF6B8A; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* DITAMBAHKAN: Style untuk container canvas grafik */
+        /* Style untuk container canvas grafik */
         .chart-canvas-container { position: relative; height: 250px; }
     </style>
 </head>
@@ -188,8 +188,10 @@
             const newTheme = isDark ? 'dark' : 'light';
             localStorage.setItem('theme', newTheme);
             updateThemeIcon(newTheme);
-            if (state.activeTab === 'rekap') {
-                renderAllRekapVisuals();
+            if (state.activeTab === 'rekap' && state.rekapData) {
+                // Merender ulang visual dengan data yang terakhir digunakan (bisa difilter atau tidak)
+                const dataToRender = state.rekapFilteredData || state.rekapData;
+                renderAllRekapVisuals(dataToRender);
             }
         }
         
@@ -308,9 +310,15 @@
                     header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Laporan & Statistik</h1><p class="text-secondary">Analisis data reservasi klinik</p>${themeButton}`;
                     const rekapResult = await callBackend('GET', 'getRekapData');
                     if (rekapResult.status === 'success') {
+                        if (state.data.allPatients.length === 0) {
+                            const patientsData = await callBackend('GET', 'getPatients', { query: '' });
+                            state.data.allPatients = patientsData.data || [];
+                        }
                         state.rekapData = rekapResult.data;
+                        state.rekapFilteredData = null; // Reset filter saat navigasi
                         appContent.innerHTML = renderRekapPage();
-                        renderAllRekapVisuals();
+                        setupRekapEventListeners();
+                        renderAllRekapVisuals(state.rekapData);
                     } else {
                         appContent.innerHTML = `<p class="text-center text-red-500">${rekapResult.message}</p>`;
                     }
@@ -578,9 +586,8 @@
         
         function updateCartFab() { const fab = document.getElementById('booking-cart-fab'); const count = document.getElementById('cart-count'); fab.classList.toggle('hidden', state.selectedItems.length === 0 || state.activeTab !== 'home'); count.textContent = state.selectedItems.length; }
         
-        // --- FUNGSI-FUNGSI RENDER HALAMAN REKAP ---
+        // --- FUNGSI-FUNGSI HALAMAN REKAP (DIMODIFIKASI) ---
         
-        // DITAMBAHKAN: Fungsi helper untuk membuat container setiap grafik.
         function createChartContainer(canvasId, title, extraClasses = '') {
             return `
             <div class="p-4 rounded-lg shadow bg-card ${extraClasses}">
@@ -596,9 +603,25 @@
             </div>`;
         }
         
-        // DIMODIFIKASI: Menggunakan helper createChartContainer.
         function renderRekapPage() {
             return `<div class="space-y-6">
+                <div class="p-4 rounded-lg shadow bg-card">
+                    <h3 class="font-bold text-lg theme-pink mb-3 border-b border-primary pb-2">Filter Data Laporan</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                        <div>
+                            <label for="filter-start-date" class="block text-sm font-medium text-secondary">Tanggal Mulai</label>
+                            <input type="date" id="filter-start-date" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field p-2 text-sm">
+                        </div>
+                        <div>
+                            <label for="filter-end-date" class="block text-sm font-medium text-secondary">Tanggal Akhir</label>
+                            <input type="date" id="filter-end-date" class="mt-1 w-full border-gray-300 rounded-md shadow-sm input-field p-2 text-sm">
+                        </div>
+                        <div class="sm:col-span-2 flex justify-end gap-3">
+                            <button id="reset-filter-btn" class="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg text-sm font-medium">Tampilkan Semua</button>
+                            <button id="apply-filter-btn" class="px-4 py-2 bg-theme-pink text-white rounded-lg text-sm font-medium">Terapkan Filter</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="p-4 rounded-lg shadow bg-card">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="font-bold text-lg theme-pink">Grafik Statistik</h3>
@@ -633,16 +656,137 @@
                 </div>
             </div>`;
         }
+
+        function setupRekapEventListeners() {
+            document.getElementById('apply-filter-btn').addEventListener('click', applyRekapFilter);
+            document.getElementById('reset-filter-btn').addEventListener('click', resetRekapFilter);
+        }
+
+        function applyRekapFilter() {
+            const startDate = document.getElementById('filter-start-date').value;
+            const endDate = document.getElementById('filter-end-date').value;
+
+            if (!startDate || !endDate) {
+                showToast('Silakan pilih tanggal mulai dan akhir.', 'warning');
+                return;
+            }
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            end.setHours(23, 59, 59, 999); 
+
+            if (start > end) {
+                showToast('Tanggal mulai tidak boleh melebihi tanggal akhir.', 'warning');
+                return;
+            }
+
+            const originalData = state.rekapData;
+            if (!originalData || !originalData.rawReservations) return;
+
+            const filteredReservations = originalData.rawReservations.filter(res => {
+                const visitDate = new Date(res.Tanggal_Datang);
+                return !isNaN(visitDate.getTime()) && visitDate >= start && visitDate <= end;
+            });
+
+            showToast(`Menampilkan ${filteredReservations.length} data dari rentang waktu yang dipilih.`, 'info');
+
+            const newStats = calculateStatsFromReservations(filteredReservations, state.data.allPatients);
+            const filteredData = { stats: newStats, rawReservations: filteredReservations };
+            
+            state.rekapFilteredData = filteredData; // Simpan data yang difilter
+            renderAllRekapVisuals(filteredData);
+        }
+
+        function resetRekapFilter() {
+            document.getElementById('filter-start-date').value = '';
+            document.getElementById('filter-end-date').value = '';
+            state.rekapFilteredData = null; // Hapus data yang difilter
+            showToast('Filter dihapus. Menampilkan semua data.', 'info');
+            renderAllRekapVisuals(state.rekapData);
+        }
+
+        function calculateStatsFromReservations(reservations, allPatients) {
+            const stats = {
+                dailyTrend: {}, categoryCounts: {}, treatmentNameCounts: {}, genderCounts: {},
+                dayCounts: {}, peakHourCounts: {}, monthCounts: {}, therapistCounts: {},
+                ageDemographics: {}, addressDemographics: {}, calendarData: {}
+            };
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const ageGroups = { '0-10': 0, '11-20': 0, '21-30': 0, '31-40': 0, '41-50': 0, '51+': 0, 'N/A': 0 };
+
+            reservations.forEach(res => {
+                const visitDate = new Date(res.Tanggal_Datang);
+                if (isNaN(visitDate.getTime())) return;
+
+                const dateKey = visitDate.toISOString().split('T')[0];
+                stats.dailyTrend[dateKey] = (stats.dailyTrend[dateKey] || 0) + 1;
+                stats.calendarData[dateKey] = (stats.calendarData[dateKey] || 0) + 1;
+                
+                stats.dayCounts[days[visitDate.getDay()]] = (stats.dayCounts[days[visitDate.getDay()]] || 0) + 1;
+                stats.monthCounts[months[visitDate.getMonth()]] = (stats.monthCounts[months[visitDate.getMonth()]] || 0) + 1;
+                stats.peakHourCounts[visitDate.getHours().toString().padStart(2, '0') + ':00'] = (stats.peakHourCounts[visitDate.getHours().toString().padStart(2, '0') + ':00'] || 0) + 1;
+
+                if (res.Terapis && res.Terapis !== 'N/A') stats.therapistCounts[res.Terapis] = (stats.therapistCounts[res.Terapis] || 0) + 1;
+                if (res.Alamat) {
+                    const addressParts = res.Alamat.split(/[ ,]+/);
+                    let city = addressParts.pop().trim();
+                    city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+                    if(city) stats.addressDemographics[city] = (stats.addressDemographics[city] || 0) + 1;
+                }
+
+                try {
+                    JSON.parse(res.Items || '[]').forEach(itemName => { stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1; });
+                    JSON.parse(res.Item_Categories || '[]').forEach(catName => { if(catName) stats.categoryCounts[catName] = (stats.categoryCounts[catName] || 0) + 1; });
+                } catch(e) { console.warn("Could not parse items/categories for a reservation."); }
+
+                const patientData = allPatients.find(p => p.RME === res.RME);
+                if (patientData) {
+                    if (patientData.Jenis_Kelamin) stats.genderCounts[patientData.Jenis_Kelamin] = (stats.genderCounts[patientData.Jenis_Kelamin] || 0) + 1;
+                    if (patientData.Tanggal_Lahir) {
+                        const dob = new Date(patientData.Tanggal_Lahir);
+                        const age = !isNaN(dob.getTime()) ? new Date().getFullYear() - dob.getFullYear() : -1;
+                        if (age >= 0 && age <= 10) ageGroups['0-10']++;
+                        else if (age <= 20) ageGroups['11-20']++; else if (age <= 30) ageGroups['21-30']++;
+                        else if (age <= 40) ageGroups['31-40']++; else if (age <= 50) ageGroups['41-50']++;
+                        else if (age > 50) ageGroups['51+']++; else ageGroups['N/A']++;
+                    } else { ageGroups['N/A']++; }
+                }
+            });
+
+            stats.ageDemographics = ageGroups;
+            const sortedAddresses = Object.entries(stats.addressDemographics).sort(([,a],[,b]) => b-a).slice(0, 10);
+            stats.addressDemographics = Object.fromEntries(sortedAddresses);
+            return stats;
+        }
         
-        function renderAllRekapVisuals() { const { stats, rawReservations } = state.rekapData; createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend), Object.values(stats.dailyTrend), 'Grafik Naik/Turun Total Reservasi'); createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Survey Kategori Treatment'); createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Survey Nama Treatment Terpopuler'); createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Survey Jenis Kelamin Pengunjung'); createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Survey Hari Teramai'); createChart('hourChart', 'line', Object.keys(stats.peakHourCounts).sort(), Object.keys(stats.peakHourCounts).sort().map(key => stats.peakHourCounts[key]), 'Survey Jam Teramai'); createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Survey Bulan Teramai'); createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Survey Kinerja Terapis/Bidan'); createChart('ageChart', 'bar', Object.keys(stats.ageDemographics), Object.values(stats.ageDemographics), 'Survey Demografi Usia Pasien'); createChart('addressChart', 'bar', Object.keys(stats.addressDemographics), Object.values(stats.addressDemographics), 'Survey Domisili Pasien Teratas'); renderCalendar(); renderRekapTable(rawReservations); }
+        function renderAllRekapVisuals(dataToRender) {
+            if (!dataToRender) {
+                console.error("renderAllRekapVisuals dipanggil tanpa data.");
+                document.getElementById('rekap-charts').innerHTML = "<p class='text-center text-secondary col-span-full'>Gagal memuat data rekap.</p>";
+                return;
+            }
+            const { stats, rawReservations } = dataToRender;
+            createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend), Object.values(stats.dailyTrend), 'Grafik Naik/Turun Total Reservasi');
+            createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Survey Kategori Treatment');
+            createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Survey Nama Treatment Terpopuler');
+            createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Survey Jenis Kelamin Pengunjung');
+            createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Survey Hari Teramai');
+            createChart('hourChart', 'line', Object.keys(stats.peakHourCounts).sort(), Object.keys(stats.peakHourCounts).sort().map(key => stats.peakHourCounts[key]), 'Survey Jam Teramai');
+            createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Survey Bulan Teramai');
+            createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Survey Kinerja Terapis/Bidan');
+            createChart('ageChart', 'bar', Object.keys(stats.ageDemographics), Object.values(stats.ageDemographics), 'Survey Demografi Usia Pasien');
+            createChart('addressChart', 'bar', Object.keys(stats.addressDemographics), Object.values(stats.addressDemographics), 'Survey Domisili Pasien Teratas');
+            renderCalendar(stats.calendarData);
+            renderRekapTable(rawReservations);
+        }
         
-        // DIMODIFIKASI: Judul grafik disembunyikan dari canvas (ditampilkan di HTML), tapi tetap disimpan di config.
         function createChart(canvasId, type, labels, data, title) {
             const ctx = document.getElementById(canvasId);
+            if (!ctx) return;
             const container = ctx.parentElement;
 
-            if (!ctx || !data || data.length === 0 || Object.values(data).every(v=>v===0)) {
-                if(container) container.innerHTML = `<div class="flex items-center justify-center h-full text-center text-gray-400 text-sm">(Tidak ada data untuk ditampilkan)</div>`;
+            if (!data || data.length === 0 || Object.values(data).every(v => v === 0)) {
+                if (container) container.innerHTML = `<div class="flex items-center justify-center h-full text-center text-gray-400 text-sm p-4">(Tidak ada data untuk ditampilkan pada periode ini)</div>`;
                 return;
             }
             const isDark = document.documentElement.classList.contains('dark');
@@ -659,11 +803,34 @@
             window.myCharts[canvasId] = chart;
         }
 
-        function renderCalendar() { const container = document.getElementById('calendar-container'); if (!container) return; const { calendarData } = state.rekapData.stats; const date = state.currentCalendarDate; const month = date.getMonth(); const year = date.getFullYear(); const firstDay = new Date(year, month, 1); const lastDay = new Date(year, month + 1, 0); const daysInMonth = lastDay.getDate(); const startDayOfWeek = firstDay.getDay(); let html = `<div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chevron-left"></i></button><h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'})}</h4><button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chevron-right"></i></button></div><div class="grid grid-cols-7 text-center font-semibold text-sm mb-2">${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div>${d}</div>`).join('')}</div><div class="grid grid-cols-7 gap-1">`; for (let i = 0; i < startDayOfWeek; i++) { html += `<div></div>`; } for (let day = 1; day <= daysInMonth; day++) { const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const count = calendarData[dateKey] || 0; let colorClass = 'bg-gray-200 dark:bg-gray-700'; if (count > 0) colorClass = 'bg-green-200 dark:bg-green-800'; if (count > 2) colorClass = 'bg-yellow-200 dark:bg-yellow-700'; if (count > 5) colorClass = 'bg-red-300 dark:bg-red-800'; html += `<div class="aspect-square flex flex-col justify-center items-center rounded-lg ${colorClass} text-xs"><span class="font-semibold text-sm">${day}</span>${count > 0 ? `<span class="mt-1">${count} res</span>` : ''}</div>`; } html += `</div>`; container.innerHTML = html; }
+        function renderCalendar(calendarData) {
+            const container = document.getElementById('calendar-container');
+            if (!container) return;
+            const date = state.currentCalendarDate;
+            const month = date.getMonth();
+            const year = date.getFullYear();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startDayOfWeek = firstDay.getDay();
+            let html = `<div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chevron-left"></i></button><h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'})}</h4><button onclick="changeMonth(1)" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><i class="fas fa-chevron-right"></i></button></div><div class="grid grid-cols-7 text-center font-semibold text-sm mb-2">${['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => `<div>${d}</div>`).join('')}</div><div class="grid grid-cols-7 gap-1">`;
+            for (let i = 0; i < startDayOfWeek; i++) { html += `<div></div>`; }
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const count = calendarData[dateKey] || 0;
+                let colorClass = 'bg-gray-200 dark:bg-gray-700';
+                if (count > 0) colorClass = 'bg-green-200 dark:bg-green-800';
+                if (count > 2) colorClass = 'bg-yellow-200 dark:bg-yellow-700';
+                if (count > 5) colorClass = 'bg-red-300 dark:bg-red-800';
+                html += `<div class="aspect-square flex flex-col justify-center items-center rounded-lg ${colorClass} text-xs"><span class="font-semibold text-sm">${day}</span>${count > 0 ? `<span class="mt-1">${count} res</span>` : ''}</div>`;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        }
         
-        function changeMonth(direction) { state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + direction); renderCalendar(); }
+        function changeMonth(direction) { state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + direction); const dataToUse = state.rekapFilteredData || state.rekapData; renderCalendar(dataToUse.stats.calendarData); }
         
-        function renderRekapTable(reservations) { const container = document.getElementById('table-container'); if (!container || !reservations || reservations.length === 0) { if(container) container.innerHTML = `<p class="text-center text-secondary py-4">Tidak ada data.</p>`; return; } let tableHTML = `<table class="w-full text-sm text-left text-secondary"><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-2">Tgl Datang</th><th class="px-4 py-2">Pasien</th><th class="px-4 py-2">Items</th><th class="px-4 py-2">Status</th></tr></thead><tbody>`; reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => { const d = new Date(res.Tanggal_Datang); const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID'); tableHTML += `<tr class="border-b border-primary bg-card"><td class="px-4 py-2">${dateStr}</td><td class="px-4 py-2 font-medium text-primary">${res.Nama_Pasien}</td><td class="px-4 py-2">${JSON.parse(res.Items || '[]').join(', ')}</td><td class="px-4 py-2">${res.Status}</td></tr>`; }); tableHTML += `</tbody></table>`; container.innerHTML = tableHTML; }
+        function renderRekapTable(reservations) { const container = document.getElementById('table-container'); if (!container) return; if (!reservations || reservations.length === 0) { container.innerHTML = `<p class="text-center text-secondary py-4">Tidak ada data untuk ditampilkan pada periode ini.</p>`; return; } let tableHTML = `<table class="w-full text-sm text-left text-secondary"><thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"><tr><th class="px-4 py-2">Tgl Datang</th><th class="px-4 py-2">Pasien</th><th class="px-4 py-2">Items</th><th class="px-4 py-2">Status</th></tr></thead><tbody>`; reservations.sort((a,b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => { const d = new Date(res.Tanggal_Datang); const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID'); tableHTML += `<tr class="border-b border-primary bg-card"><td class="px-4 py-2">${dateStr}</td><td class="px-4 py-2 font-medium text-primary">${res.Nama_Pasien}</td><td class="px-4 py-2">${JSON.parse(res.Items || '[]').join(', ')}</td><td class="px-4 py-2">${res.Status}</td></tr>`; }); tableHTML += `</tbody></table>`; container.innerHTML = tableHTML; }
         
         async function printSection(elementId, title) { const { jsPDF } = window.jspdf; const elementToPrint = document.getElementById(elementId); if (!elementToPrint) return; showToast('Mempersiapkan PDF...', 'info'); const pdf = new jsPDF('p', 'mm', 'a4'); pdf.setFontSize(16); pdf.text(title, 105, 15, null, null, 'center'); pdf.setFontSize(10); pdf.text(`Dicetak pada: ${new Date().toLocaleString('id-ID')}`, 105, 22, null, null, 'center'); const canvas = await html2canvas(elementToPrint, { scale: 2, useCORS: true, backgroundColor: document.documentElement.classList.contains('dark') ? '#111827' : '#ffffff' }); const imgData = canvas.toDataURL('image/png'); const imgProps = pdf.getImageProperties(imgData); const pdfWidth = pdf.internal.pageSize.getWidth() - 20; const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width; let currentHeight = 30; if (pdfHeight < (pdf.internal.pageSize.getHeight() - currentHeight - 10)) { pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdfHeight); } else { showToast('Konten terlalu panjang, mungkin terpotong.', 'warning'); pdf.addImage(imgData, 'PNG', 10, currentHeight, pdfWidth, pdf.internal.pageSize.getHeight() - currentHeight - 10); } pdf.save(`${title.replace(/ /g, '-')}.pdf`); }
         
@@ -712,20 +879,17 @@
             }
         }
         
-        // FUNGSI DIMODIFIKASI UNTUK PERBAIKAN ERROR
         function showChartModal(canvasId) {
             const originalChart = window.myCharts[canvasId];
             if (!originalChart) {
-                console.error('Chart instance not found for ID:', canvasId);
                 showToast('Gagal memuat detail grafik.', 'error');
                 return;
             }
-
             const title = originalChart.options.plugins.title.text;
 
             const modalHtml = `
-            <div id="chart-zoom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
-                <div class="bg-card rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div id="chart-zoom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-2 sm:p-4">
+                <div class="bg-card rounded-lg shadow-xl w-full h-full sm:w-11/12 sm:h-[95vh] flex flex-col">
                     <div class="p-4 border-b border-primary flex justify-between items-center flex-shrink-0">
                         <h2 class="text-xl font-bold theme-pink">${title}</h2>
                         <button onclick="closeModal('chart-zoom-modal')" class="text-secondary text-2xl hover:text-primary">&times;</button>
@@ -739,11 +903,9 @@
 
             const zoomedCtx = document.getElementById('zoomed-chart-canvas').getContext('2d');
             
-            // AWAL PERBAIKAN: Membuat konfigurasi baru untuk grafik yang di-zoom, menghindari JSON.stringify pada options.
             const originalConfig = originalChart.config;
             const newConfig = {
                 type: originalConfig.type,
-                // Salin data dengan aman
                 data: JSON.parse(JSON.stringify(originalConfig.data))
             };
 
@@ -751,39 +913,21 @@
             const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
             const textColor = isDark ? '#f9fafb' : '#111827';
 
-            // Buat ulang objek options untuk memastikan struktur yang benar
             newConfig.options = {
                 maintainAspectRatio: false,
                 responsive: true,
-                indexAxis: originalChart.options.indexAxis, // Ambil 'indexAxis' dari options yang sudah di-resolve
+                indexAxis: originalChart.options.indexAxis,
                 plugins: {
-                    title: {
-                        display: false // Judul sudah ada di header modal
-                    },
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            color: textColor
-                        }
-                    }
+                    title: { display: false },
+                    legend: { display: true, position: 'top', labels: { color: textColor } }
                 },
                 scales: {
-                    y: {
-                        ticks: { color: textColor },
-                        grid: { color: gridColor }
-                    },
-                    x: {
-                        ticks: { color: textColor },
-                        grid: { color: gridColor }
-                    }
+                    y: { ticks: { color: textColor }, grid: { color: gridColor } },
+                    x: { ticks: { color: textColor }, grid: { color: gridColor } }
                 }
             };
-            // AKHIR PERBAIKAN
 
-            if (window.zoomedChart) {
-                window.zoomedChart.destroy();
-            }
+            if (window.zoomedChart) window.zoomedChart.destroy();
             window.zoomedChart = new Chart(zoomedCtx, newConfig);
         }
 
@@ -805,10 +949,9 @@
 
         function setLoading(isLoading) { document.getElementById('global-loader').style.display = isLoading ? 'flex' : 'none'; }
         
-        function showToast(message, type = 'info') { const toast = document.createElement('div'); const colors = {'success':'bg-green-500', 'error':'bg-red-500', 'warning':'bg-yellow-500', 'info':'bg-blue-500'}; toast.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-[101] transition-transform transform translate-x-full`; toast.textContent = message; document.body.appendChild(toast); setTimeout(() => toast.classList.remove('translate-x-full'), 100); setTimeout(() => { toast.classList.add('translate-x-full'); setTimeout(() => toast.remove(), 300); }, 3500); }
+        function showToast(message, type = 'info') { const toast = document.createElement('div'); const colors = {'success':'bg-green-500', 'error':'bg-red-500', 'warning':'bg-yellow-500', 'info':'bg-blue-500'}; toast.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-[101] transition-transform transform translate-x-full`; toast.textContent = message; document.body.appendChild(toast); setTimeout(() => toast.classList.remove('translate-x-full'), 100); setTimeout(() => { toast.classList.add('translate-x-full'); setTimeout(() => toast.remove(), 3500); }, 3500); }
         
         function closeModal(modalId) { const modal = document.getElementById(modalId); if (modal) { modal.remove(); if (window.zoomedChart) { window.zoomedChart.destroy(); window.zoomedChart = null; } } }
     </script>
 </body>
 </html>
-
