@@ -1,40 +1,45 @@
 // =================================================================
 //      BACKEND - KLINIK NABILAH PULUNGAN (Google Apps Script)
 // =================================================================
-// File: googleappscript.js
-// Author: Gemini
-// Instructions:
-// 1. Ganti seluruh kode di Apps Script Anda dengan kode ini.
-// 2. Tidak perlu menjalankan `setupInitialSheet` lagi jika sheet sudah ada.
-// 3. Deploy ulang sebagai Web App (PENTING: Pilih versi BARU saat deploy ulang).
+// File: Code.gs (atau nama file skrip Anda di Google Apps Script)
+// Deskripsi:
+// Skrip ini berfungsi sebagai backend (server) untuk aplikasi web reservasi.
+// Ia menangani semua logika bisnis seperti menyimpan, mengambil, dan
+// memanipulasi data yang tersimpan di Google Sheets.
+//
+// Petunjuk Penggunaan:
+// 1. Salin seluruh kode ini dan tempelkan ke editor skrip proyek Google Apps Script Anda.
+// 2. Jika Anda baru memulai, jalankan fungsi `setupInitialSheet` sekali dari editor untuk membuat semua sheet yang diperlukan.
+// 3. Deploy skrip sebagai "Web App". Pastikan untuk memilih versi BARU setiap kali Anda melakukan perubahan pada kode.
 // =================================================================
 
-// --- KONSTANTA GLOBAL ---
-// Mendefinisikan konstanta untuk nama-nama sheet agar mudah dikelola dan tidak ada salah ketik.
-const SPREADSHEET_ID = SpreadsheetApp.getActiveSpreadsheet().getId(); // (Tidak digunakan secara eksplisit, tapi baik untuk ada)
+// --- 1. KONSTANTA GLOBAL ---
+// Mendefinisikan nama-nama sheet sebagai konstanta.
+// Ini adalah praktik yang baik untuk menghindari kesalahan pengetikan (typo) dan memudahkan jika suatu saat nama sheet perlu diubah.
 const PATIENT_SHEET_NAME = 'Pasien';
 const RESERVATION_SHEET_NAME = 'Reservasi';
 const TREATMENT_SHEET_NAME = 'Treatments';
 const PRODUCT_SHEET_NAME = 'Products';
 const LOG_SHEET_NAME = 'Log'; // Sheet untuk mencatat error
 
-// --- FUNGSI UTAMA WEB APP (ENTRY POINT) ---
+// --- 2. FUNGSI UTAMA WEB APP (ENTRY POINT) ---
 
 /**
- * Fungsi ini dijalankan ketika ada request HTTP GET ke URL Web App.
- * Berfungsi sebagai router untuk mengambil data (read operations).
- * @param {Object} e - Objek event yang berisi parameter dari request.
+ * Fungsi `doGet(e)` adalah fungsi khusus Google Apps Script yang akan
+ * dieksekusi setiap kali ada request HTTP GET ke URL web app.
+ * Fungsi ini biasanya digunakan untuk MENGAMBIL (get) data.
+ * @param {object} e - Objek event yang berisi parameter dari URL request.
  * @returns {ContentService.TextOutput} - Respon dalam format JSON.
  */
 function doGet(e) {
-  try {
-    // Mengambil parameter 'action' dari URL.
+  try { // Blok `try...catch` digunakan untuk menangani potensi error selama eksekusi.
+    // Mengambil parameter 'action' dari URL. Contoh: ?action=getReservations
     const action = e.parameter.action;
-    // Mengambil dan mem-parsing 'payload' dari URL (jika ada).
+    // Mengambil parameter 'payload' (jika ada) dan mengubahnya dari string JSON menjadi objek JavaScript.
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
     let response;
 
-    // Memilih fungsi yang akan dijalankan berdasarkan 'action'.
+    // `switch` digunakan untuk memilih blok kode yang akan dijalankan berdasarkan nilai `action`.
     switch(action) {
       case 'getReservations':   response = getReservations(); break;
       case 'getPatients':       response = getPatients(payload.query); break;
@@ -43,130 +48,118 @@ function doGet(e) {
       case 'getPatientHistory': response = getPatientHistory(payload); break; 
       default:                  response = { status: 'error', message: 'Invalid GET action' };
     }
-    // Mengembalikan hasil sebagai JSON.
+    // Mengembalikan hasil sebagai response JSON.
     return createJsonResponse(response);
   } catch (error) {
-    // Jika terjadi error, catat error dan kembalikan pesan error.
+    // Jika terjadi error di dalam blok `try`, catat error tersebut dan kirim response error.
     logError('doGet', error);
     return createJsonResponse({ status: 'error', message: error.message });
   }
 }
 
 /**
- * Fungsi ini dijalankan ketika ada request HTTP POST ke URL Web App.
- * Berfungsi sebagai router untuk mengubah data (create, update, delete operations).
- * @param {Object} e - Objek event yang berisi data POST.
+ * Fungsi `doPost(e)` adalah fungsi khusus yang dieksekusi setiap kali
+ * ada request HTTP POST ke URL web app.
+ * Fungsi ini biasanya digunakan untuk MENGIRIM atau MENGUBAH data.
+ * @param {object} e - Objek event yang berisi data yang dikirim di body request.
  * @returns {ContentService.TextOutput} - Respon dalam format JSON.
  */
 function doPost(e) {
   try {
-    // Mem-parsing data JSON dari body request.
+    // Mengambil data dari body POST request dan mengubahnya dari string JSON menjadi objek JavaScript.
     const requestData = JSON.parse(e.postData.contents);
     const action = requestData.action;
     const payload = requestData.payload;
     let response;
 
-    // Validasi: pastikan 'action' ada.
+    // Validasi sederhana untuk memastikan `action` ada.
     if (!action) return createJsonResponse({ status: 'error', message: 'Action not specified' });
 
-    // Memilih fungsi yang akan dijalankan berdasarkan 'action'.
     switch (action) {
       case 'newReservation':      response = handleNewReservation(payload); break;
       case 'completeReservation': response = handleCompleteReservation(payload); break;
       case 'addOrUpdateItem':     response = handleAddOrUpdateItem(payload); break;
+      case 'updatePatient':       response = handleUpdatePatient(payload); break;
       default:                    response = { status: 'error', message: 'Invalid POST action' };
     }
-    // Mengembalikan hasil sebagai JSON.
     return createJsonResponse(response);
   } catch (error) {
-    // Jika terjadi error, catat error dan kembalikan pesan error.
     logError('doPost', error);
     return createJsonResponse({ status: 'error', message: error.message, stack: error.stack });
   }
 }
 
 
-// --- FUNGSI-FUNGSI HANDLER (LOGIKA BISNIS) ---
+// --- 3. FUNGSI-FUNGSI HANDLER (LOGIKA BISNIS) ---
+// Fungsi-fungsi ini berisi logika utama dari aplikasi.
 
 /**
- * Mengambil riwayat semua kunjungan seorang pasien berdasarkan RME.
- * @param {Object} payload - Objek yang berisi { rme: 'NBLH-XXX' }.
- * @returns {Object} - Objek status dan data riwayat pasien.
+ * Mengambil riwayat reservasi untuk seorang pasien berdasarkan RME.
+ * @param {object} payload - Objek yang berisi `rme`.
+ * @returns {object} - Objek status dan data riwayat.
  */
 function getPatientHistory(payload) {
-  // Validasi input.
-  if (!payload || !payload.rme) {
-    return { status: 'error', message: 'RME tidak valid.' };
-  }
-  // Ambil semua data reservasi.
+  if (!payload || !payload.rme) return { status: 'error', message: 'RME tidak valid.' };
   const reservations = sheetToJSON(getSheet(RESERVATION_SHEET_NAME));
-  // Filter reservasi berdasarkan RME yang cocok.
+  // Memfilter semua reservasi untuk mendapatkan yang cocok dengan RME, lalu mengurutkannya.
   const patientHistory = reservations
     .filter(res => res.RME === payload.rme)
-    .sort((a, b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang)); // Urutkan dari yang terbaru.
-  
+    .sort((a, b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang));
   return { status: 'success', data: patientHistory };
 }
 
 /**
  * Menangani pembuatan reservasi baru.
- * Mencari/membuat data pasien, lalu menambahkan data reservasi ke sheet.
- * @param {Object} data - Data dari form reservasi di frontend.
- * @returns {Object} - Objek status dan pesan hasil operasi.
+ * Ini termasuk mencari atau membuat data pasien dan menambahkan data reservasi ke sheet.
+ * @param {object} data - Data lengkap dari form reservasi di frontend.
+ * @returns {object} - Objek status dan RME pasien.
  */
 function handleNewReservation(data) {
-  // Cari atau buat pasien baru dan dapatkan RME-nya.
+  // Mencari pasien yang ada atau membuat yang baru jika tidak ditemukan.
   const patientRecord = findOrCreatePatient(data);
   const rme = patientRecord.rme;
   const reservationSheet = getSheet(RESERVATION_SHEET_NAME);
   
-  // Cek konflik jadwal (jika bukan janji partus 24 jam).
+  // Cek konflik jadwal: jika ada 2 atau lebih reservasi pada jam yang sama, tolak.
   if (data.visitTime !== '24_jam') {
     const reservations = sheetToJSON(reservationSheet);
     const visitDateTime = new Date(`${data.visitDate}T${data.visitTime}`);
-    // Cari reservasi lain pada jam dan tanggal yang sama.
     const conflict = reservations.filter(r => {
-        if (!r.Tanggal_Datang || r.Status === 'Selesai') return false; // Abaikan yang sudah selesai.
+        if (!r.Tanggal_Datang || r.Status === 'Selesai') return false;
         try {
-            const existingDate = new Date(r.Tanggal_Datang);
-            return existingDate.getTime() === visitDateTime.getTime();
+            return new Date(r.Tanggal_Datang).getTime() === visitDateTime.getTime();
         } catch (err) { return false; }
     });
-    // Jika sudah ada 2 atau lebih, tolak reservasi baru.
     if (conflict.length >= 2) {
       return { status: 'error', message: 'Slot pada jam dan tanggal tersebut sudah penuh (Maks 2 reservasi).' };
     }
   }
 
-  // Buat ID reservasi unik.
+  // Membuat ID unik untuk reservasi.
   const reservationId = 'RES-' + Date.now();
-  // Gabungkan tanggal dan waktu kunjungan.
   const visitDateTime = new Date(`${data.visitDate}T${data.visitTime}`);
-
-  // Siapkan baris baru untuk dimasukkan ke sheet Reservasi.
+  // Menyiapkan data baris baru untuk dimasukkan ke sheet Reservasi.
   const newReservation = [
     reservationId, new Date(), 'Menunggu', rme, data.patientName, data.requesterName,
     data.phone, data.address, 
-    // Pastikan tanggal valid sebelum diubah ke ISO string.
     !isNaN(visitDateTime.getTime()) ? visitDateTime.toISOString() : `${data.visitDate}T${data.visitTime}`,
-    data.visitTime, JSON.stringify(data.selectedItems.map(item => item.name)), // Simpan item sebagai string JSON
-    data.complaint || '', data.notes || '', '', '' // Kolom Terapis & Data Pemeriksaan dikosongkan dulu
+    data.visitTime, JSON.stringify(data.selectedItems.map(item => item.name)),
+    data.complaint || '', data.notes || '', '', ''
   ];
-  // Tambahkan baris baru ke sheet.
+  // Menambahkan baris baru ke akhir sheet.
   reservationSheet.appendRow(newReservation);
   return { status: 'success', message: 'Reservasi berhasil dibuat.', data: { rme: rme } };
 }
 
 /**
- * Mencari pasien berdasarkan nama dan No HP. Jika tidak ada, buat pasien baru.
- * @param {Object} data - Data dari form reservasi.
- * @returns {Object} - Objek yang berisi data pasien dan status (apakah pasien baru atau tidak).
+ * Mencari pasien berdasarkan nama dan nomor HP. Jika tidak ada, buat data pasien baru.
+ * @param {object} data - Data dari form reservasi.
+ * @returns {object} - Objek berisi data pasien dan status (baru/lama).
  */
 function findOrCreatePatient(data) {
     const patientSheet = getSheet(PATIENT_SHEET_NAME);
     const patients = sheetToJSON(patientSheet);
-
-    // Cari pasien yang ada dengan mencocokkan nama (case-insensitive) DAN nomor HP.
+    // Mencari pasien yang cocok. Mengubah ke huruf kecil untuk pencocokan case-insensitive.
     let existingPatient = patients.find(p => 
         p.Nama_Pasien.toLowerCase() === data.patientName.toLowerCase() && 
         String(p.No_HP).trim() === String(data.phone).trim()
@@ -176,66 +169,104 @@ function findOrCreatePatient(data) {
         // Jika pasien ditemukan, kembalikan datanya.
         return { ...existingPatient, rme: existingPatient.RME, isNew: false };
     } else {
-        // Jika tidak ditemukan, buat RME baru.
+        // Jika tidak ditemukan, buat RME baru dan tambahkan pasien baru ke sheet.
         const newRME = generateRME(patientSheet);
         const dobDate = new Date(data.dob);
-        // Siapkan baris baru untuk dimasukkan ke sheet Pasien.
         const newPatientRow = [ newRME, data.patientName, data.requesterName, data.phone, data.instagram || '', data.address, !isNaN(dobDate.getTime()) ? dobDate.toISOString() : data.dob, new Date(), data.gender ];
         patientSheet.appendRow(newPatientRow);
-        // Kembalikan RME yang baru dibuat.
         return { rme: newRME, isNew: true };
     }
 }
 
+/**
+ * Menangani pembaruan data pasien dan menyinkronkan perubahan ke reservasi aktif.
+ * @param {object} payload - Data baru pasien.
+ * @returns {object} - Objek status.
+ */
+function handleUpdatePatient(payload) {
+    const { rme, patientName, requesterName, phone, instagram, address, dob, gender } = payload;
+    if (!rme) return { status: 'error', message: 'RME tidak ditemukan untuk pembaruan.' };
+
+    const patientSheet = getSheet(PATIENT_SHEET_NAME);
+    const data = patientSheet.getDataRange().getValues();
+    const headers = data[0];
+    const rmeColIndex = headers.indexOf('RME');
+    if (rmeColIndex === -1) return { status: 'error', message: 'Kolom RME tidak ditemukan.'};
+    
+    // Mencari baris yang sesuai dengan RME.
+    const rowIndex = data.findIndex(row => row[rmeColIndex] === rme);
+    if (rowIndex === -1) return { status: 'error', message: 'Pasien tidak ditemukan.'};
+    
+    const realRowIndex = rowIndex + 1; // Index di array + 1 = nomor baris di sheet.
+    const dobDate = new Date(dob);
+    
+    // Memperbarui setiap sel di baris tersebut.
+    patientSheet.getRange(realRowIndex, headers.indexOf('Nama_Pasien') + 1).setValue(patientName);
+    patientSheet.getRange(realRowIndex, headers.indexOf('Nama_Pemesan') + 1).setValue(requesterName);
+    patientSheet.getRange(realRowIndex, headers.indexOf('No_HP') + 1).setValue(phone);
+    patientSheet.getRange(realRowIndex, headers.indexOf('Instagram') + 1).setValue(instagram);
+    patientSheet.getRange(realRowIndex, headers.indexOf('Alamat') + 1).setValue(address);
+    patientSheet.getRange(realRowIndex, headers.indexOf('Tanggal_Lahir') + 1).setValue(!isNaN(dobDate.getTime()) ? dobDate.toISOString() : dob);
+    patientSheet.getRange(realRowIndex, headers.indexOf('Jenis_Kelamin') + 1).setValue(gender);
+    
+    // Sinkronisasi nama ke reservasi yang statusnya masih 'Menunggu'.
+    const reservationSheet = getSheet(RESERVATION_SHEET_NAME);
+    const resData = reservationSheet.getDataRange().getValues();
+    const resHeaders = resData[0];
+    resData.forEach((row, index) => {
+        if (index > 0 && row[resHeaders.indexOf('RME')] === rme && row[resHeaders.indexOf('Status')] === 'Menunggu') {
+            reservationSheet.getRange(index + 1, resHeaders.indexOf('Nama_Pasien') + 1).setValue(patientName);
+        }
+    });
+
+    return { status: 'success', message: 'Data pasien berhasil diperbarui.' };
+}
 
 /**
- * Menangani penyelesaian reservasi.
- * Mengubah status menjadi 'Selesai' dan menambahkan nama terapis serta data pemeriksaan.
- * @param {Object} payload - Data dari form penyelesaian reservasi.
- * @returns {Object} - Objek status dan pesan hasil operasi.
+ * Menangani penyelesaian reservasi: mengubah status, menambahkan data pemeriksaan, dll.
+ * @param {object} payload - Data dari form penyelesaian.
+ * @returns {object} - Objek status.
  */
 function handleCompleteReservation(payload) {
-    const { reservationId, therapist } = payload;
+    const { reservationId, therapist, updatedItems, updatedComplaint } = payload;
     const reservationSheet = getSheet(RESERVATION_SHEET_NAME);
     const data = reservationSheet.getDataRange().getValues();
     const headers = data[0];
-    // Cari indeks kolom dan baris berdasarkan ID Reservasi.
     const idColIndex = headers.indexOf('ID_Reservasi');
     if (idColIndex === -1) return { status: 'error', message: 'Kolom ID_Reservasi tidak ditemukan.'};
+    
     let rowIndex = data.findIndex(row => row[idColIndex] === reservationId);
     if (rowIndex === -1) return { status: 'error', message: 'Reservasi tidak ditemukan.'};
     
-    // Nomor baris di sheet adalah index + 1.
     const realRowIndex = rowIndex + 1; 
-    // Gabungkan data pemeriksaan menjadi satu objek JSON.
     const examData = { suhu: payload.temp, berat: payload.weight, tinggi: payload.height, lila: payload.lila, catatan: payload.examNotes };
     
-    // Update nilai sel di sheet.
+    // Memperbarui sel-sel yang relevan di baris reservasi.
     reservationSheet.getRange(realRowIndex, headers.indexOf('Status') + 1).setValue('Selesai');
     reservationSheet.getRange(realRowIndex, headers.indexOf('Terapis') + 1).setValue(therapist);
     reservationSheet.getRange(realRowIndex, headers.indexOf('Data_Pemeriksaan') + 1).setValue(JSON.stringify(examData));
+    reservationSheet.getRange(realRowIndex, headers.indexOf('Items') + 1).setValue(JSON.stringify(updatedItems || []));
+    reservationSheet.getRange(realRowIndex, headers.indexOf('Keluhan') + 1).setValue(updatedComplaint || '');
     
     return { status: 'success', message: 'Reservasi telah diselesaikan.'};
 }
 
 /**
- * Menangani penambahan atau pembaruan data item (treatment/produk).
- * @param {Object} payload - Data dari form item di halaman manajemen.
- * @returns {Object} - Objek status dan pesan hasil operasi.
+ * Menangani penambahan atau pembaruan data treatment/produk.
+ * @param {object} payload - Data item (nama, kategori, dll).
+ * @returns {object} - Objek status.
  */
 function handleAddOrUpdateItem(payload) {
     const { type, id, name, category, description } = payload;
     const sheetName = type === 'treatment' ? TREATMENT_SHEET_NAME : PRODUCT_SHEET_NAME;
     const sheet = getSheet(sheetName);
     
-    // Jika ada ID, berarti ini adalah operasi update.
-    if (id) {
+    if (id) { // Jika ada ID, berarti ini adalah operasi update.
         const data = sheet.getDataRange().getValues();
         const rowIndex = data.findIndex(row => row[0].toString() === id.toString());
         if (rowIndex !== -1) {
             const realRowIndex = rowIndex + 1;
             const rowData = type === 'treatment' ? [id, category, name, description] : [id, name, description];
-            // Update satu baris penuh.
             sheet.getRange(realRowIndex, 1, 1, rowData.length).setValues([rowData]);
             return { status: 'success', message: 'Data berhasil diperbarui.' };
         } else {
@@ -250,218 +281,90 @@ function handleAddOrUpdateItem(payload) {
 }
 
 
-// --- FUNGSI-FUNGSI PENGAMBILAN DATA (GETTERS) ---
+// --- 4. FUNGSI-FUNGSI PENGAMBILAN DATA (GETTERS) ---
+// Fungsi-fungsi ini hanya bertugas mengambil data dari sheet dan mengembalikannya.
 
-// Mengambil semua data dari sheet Reservasi.
-function getReservations() { 
-  return { status: 'success', data: sheetToJSON(getSheet(RESERVATION_SHEET_NAME)) }; 
-}
-
-// Mengambil semua data treatment dan produk.
-function getItems() { 
-  return { status: 'success', data: { 
-    treatments: sheetToJSON(getSheet(TREATMENT_SHEET_NAME)), 
-    products: sheetToJSON(getSheet(PRODUCT_SHEET_NAME)) 
-  }}; 
-}
-
-// Mengambil data pasien, bisa semua atau difilter berdasarkan query.
+function getReservations() { return { status: 'success', data: sheetToJSON(getSheet(RESERVATION_SHEET_NAME)) }; }
+function getItems() { return { status: 'success', data: { treatments: sheetToJSON(getSheet(TREATMENT_SHEET_NAME)), products: sheetToJSON(getSheet(PRODUCT_SHEET_NAME)) }}; }
 function getPatients(query) {
     const patients = sheetToJSON(getSheet(PATIENT_SHEET_NAME));
-    if (!query) return { status: 'success', data: patients };
+    if (!query) return { status: 'success', data: patients }; // Jika tidak ada query, kembalikan semua.
     const lowerCaseQuery = query.toLowerCase();
-    const filtered = patients.filter(p => 
-      (p.RME && p.RME.toLowerCase().includes(lowerCaseQuery)) || 
-      (p.Nama_Pasien && p.Nama_Pasien.toLowerCase().includes(lowerCaseQuery))
-    );
+    // Jika ada query, filter berdasarkan RME atau Nama Pasien.
+    const filtered = patients.filter(p => (p.RME && p.RME.toLowerCase().includes(lowerCaseQuery)) || (p.Nama_Pasien && p.Nama_Pasien.toLowerCase().includes(lowerCaseQuery)));
     return { status: 'success', data: filtered };
 }
 
 /**
- * Mengambil dan mengolah semua data yang diperlukan untuk halaman Laporan/Rekapitulasi.
- * @returns {Object} - Objek status dan data statistik yang sudah diolah.
+ * Mengambil dan mengolah semua data yang diperlukan untuk halaman laporan/rekap.
+ * @returns {object} - Objek status dan data yang sudah diolah untuk statistik.
  */
 function getRekapData() {
-    // Ambil semua data mentah yang diperlukan.
     const reservations = sheetToJSON(getSheet(RESERVATION_SHEET_NAME));
     const patients = sheetToJSON(getSheet(PATIENT_SHEET_NAME));
     const treatments = sheetToJSON(getSheet(TREATMENT_SHEET_NAME));
     
-    // Buat "peta" untuk mempermudah pencarian data relasional.
+    // Membuat "map" untuk pencarian cepat (lebih efisien daripada iterasi berulang).
     const treatmentCategoryMap = treatments.reduce((map, item) => { map[item.Nama] = item.Kategori; return map; }, {});
-    const patientGenderMap = patients.reduce((map, p) => { map[p.RME] = p.Jenis_Kelamin; return map; }, {});
     
-    // Siapkan objek 'stats' untuk menampung hasil perhitungan.
-    const stats = {
-        categoryCounts: {}, treatmentNameCounts: {}, genderCounts: {'Wanita': 0, 'Pria': 0},
-        dayCounts: {'Minggu': 0, 'Senin': 0, 'Selasa': 0, 'Rabu': 0, 'Kamis': 0, 'Jumat': 0, 'Sabtu': 0},
-        peakHourCounts: {}, monthCounts: {}, therapistCounts: {}, dailyTrend: {}, calendarData: {},
-        ageDemographics: { 'Bayi (0-1)': 0, 'Balita (2-5)': 0, 'Anak (6-12)': 0, 'Remaja (13-18)': 0, 'Dewasa (19-40)': 0, 'Lansia (41+)': 0 },
-        addressDemographics: {}
-    };
+    // Objek untuk menampung semua hasil kalkulasi statistik.
+    const stats = { categoryCounts: {}, treatmentNameCounts: {}, genderCounts: {}, dayCounts: {}, peakHourCounts: {}, monthCounts: {}, therapistCounts: {}, dailyTrend: {}, calendarData: {}, ageDemographics: { 'Bayi (0-1)': 0, 'Balita (2-5)': 0, 'Anak (6-12)': 0, 'Remaja (13-18)': 0, 'Dewasa (19-40)': 0, 'Lansia (41+)': 0 }, addressDemographics: {} };
     
     // Inisialisasi data.
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
     for(let i=0; i<24; i++) { stats.peakHourCounts[i.toString().padStart(2,'0') + ':00'] = 0; }
     
-    // Iterasi melalui setiap reservasi untuk mengumpulkan statistik.
+    // Proses setiap reservasi untuk mengumpulkan data statistik.
     reservations.forEach(res => {
         if (!res.Tanggal_Datang) return;
         const visitDate = new Date(res.Tanggal_Datang);
         if (isNaN(visitDate.getTime())) return;
-
+        
         const dateKey = visitDate.toISOString().split('T')[0];
+        stats.dailyTrend[dateKey] = (stats.dailyTrend[dateKey] || 0) + 1;
         stats.calendarData[dateKey] = (stats.calendarData[dateKey] || 0) + 1;
         
-        // Hitung item dan kategori.
-        try {
-            JSON.parse(res.Items || '[]').forEach(itemName => {
-                stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1;
-                const category = treatmentCategoryMap[itemName];
-                if (category) stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
-            });
-        } catch(e) {}
+        try { JSON.parse(res.Items || '[]').forEach(itemName => { stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1; const category = treatmentCategoryMap[itemName]; if (category) stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1; }); } catch(e) {}
         
-        // Hitung statistik lainnya.
-        const gender = patientGenderMap[res.RME];
-        if (gender && stats.genderCounts.hasOwnProperty(gender)) stats.genderCounts[gender]++;
-        stats.dayCounts[days[visitDate.getDay()]]++;
+        const patient = patients.find(p => p.RME === res.RME);
+        if (patient && patient.Jenis_Kelamin) { stats.genderCounts[patient.Jenis_Kelamin] = (stats.genderCounts[patient.Jenis_Kelamin] || 0) + 1; }
+        
+        stats.dayCounts[days[visitDate.getDay()]] = (stats.dayCounts[days[visitDate.getDay()]] || 0) + 1;
         const hourKey = visitDate.getHours().toString().padStart(2, '0') + ':00';
         if (stats.peakHourCounts.hasOwnProperty(hourKey)) stats.peakHourCounts[hourKey]++;
+        
         const monthYearKey = `${months[visitDate.getMonth()]} ${visitDate.getFullYear()}`;
         stats.monthCounts[monthYearKey] = (stats.monthCounts[monthYearKey] || 0) + 1;
-        if (res.Status === 'Selesai' && res.Terapis) { stats.therapistCounts[res.Terapis] = (stats.therapistCounts[res.Terapis] || 0) + 1; }
-        stats.dailyTrend[dateKey] = (stats.dailyTrend[dateKey] || 0) + 1;
+        
+        if (res.Terapis) { stats.therapistCounts[res.Terapis] = (stats.therapistCounts[res.Terapis] || 0) + 1; }
     });
-
-    // Proses demografi pasien (usia dan alamat).
+    
+    // Proses data pasien untuk demografi usia dan alamat.
     const addressCounts = {};
     patients.forEach(p => {
-        // Usia
         if (p.Tanggal_Lahir) {
             const dob = new Date(p.Tanggal_Lahir);
             if (!isNaN(dob.getTime())) {
                 const age = (new Date() - dob) / (1000 * 60 * 60 * 24 * 365.25);
-                if (age <= 1) stats.ageDemographics['Bayi (0-1)']++;
-                else if (age <= 5) stats.ageDemographics['Balita (2-5)']++;
-                else if (age <= 12) stats.ageDemographics['Anak (6-12)']++;
-                else if (age <= 18) stats.ageDemographics['Remaja (13-18)']++;
-                else if (age <= 40) stats.ageDemographics['Dewasa (19-40)']++;
-                else stats.ageDemographics['Lansia (41+)']++;
+                if (age <= 1) stats.ageDemographics['Bayi (0-1)']++; else if (age <= 5) stats.ageDemographics['Balita (2-5)']++; else if (age <= 12) stats.ageDemographics['Anak (6-12)']++; else if (age <= 18) stats.ageDemographics['Remaja (13-18)']++; else if (age <= 40) stats.ageDemographics['Dewasa (19-40)']++; else stats.ageDemographics['Lansia (41+)']++;
             }
         }
-        // Alamat
-        if (p.Alamat && p.Alamat.trim() !== '') {
-            const address = p.Alamat.trim().toLowerCase();
-            addressCounts[address] = (addressCounts[address] || 0) + 1;
-        }
+        if (p.Alamat && p.Alamat.trim() !== '') { const address = p.Alamat.trim().toLowerCase(); addressCounts[address] = (addressCounts[address] || 0) + 1; }
     });
+    stats.addressDemographics = Object.entries(addressCounts).sort(([,a],[,b]) => b-a).slice(0, 10).reduce((r, [k, v]) => { const capitalizedKey = k.replace(/\b\w/g, l => l.toUpperCase()); r[capitalizedKey] = v; return r; }, {});
 
-    // Ambil 10 alamat teratas.
-    stats.addressDemographics = Object.entries(addressCounts)
-        .sort(([,a],[,b]) => b-a)
-        .slice(0, 10)
-        .reduce((r, [k, v]) => {
-            const capitalizedKey = k.replace(/\b\w/g, l => l.toUpperCase());
-            r[capitalizedKey] = v;
-            return r;
-        }, {});
-
-
-    // Urutkan data tren harian berdasarkan tanggal.
-    const sortedDailyTrend = Object.keys(stats.dailyTrend).sort().reduce((obj, key) => { obj[key] = stats.dailyTrend[key]; return obj; }, {});
-    stats.dailyTrend = sortedDailyTrend;
-    
-    // Kembalikan data statistik dan data reservasi mentah.
     return { status: 'success', data: {stats, rawReservations: reservations} };
 }
 
 
-// --- FUNGSI-FUNGSI UTILITAS (HELPERS) ---
+// --- 5. FUNGSI-FUNGSI UTILITAS (HELPERS) ---
+// Fungsi-fungsi pembantu untuk tugas-tugas yang berulang.
 
-// Mengubah objek JavaScript menjadi format JSON yang dapat dikirim sebagai respon.
-function createJsonResponse(data) { 
-  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON); 
-}
-
-// Mendapatkan objek Sheet berdasarkan nama. Jika tidak ada, buat sheet baru beserta headernya.
-function getSheet(sheetName) { 
-  const ss = SpreadsheetApp.getActiveSpreadsheet(); 
-  let sheet = ss.getSheetByName(sheetName); 
-  if (!sheet) { 
-    sheet = ss.insertSheet(sheetName); 
-    const headers = getHeadersForSheet(sheetName); 
-    if (headers) { 
-      sheet.appendRow(headers); 
-      sheet.setFrozenRows(1); 
-      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold'); 
-    } 
-  } 
-  return sheet; 
-}
-
-// Mendefinisikan header untuk setiap sheet.
-function getHeadersForSheet(sheetName) { 
-  const headerMap = { 
-    [PATIENT_SHEET_NAME]: ['RME', 'Nama_Pasien', 'Nama_Pemesan', 'No_HP', 'Instagram', 'Alamat', 'Tanggal_Lahir', 'Tanggal_Registrasi', 'Jenis_Kelamin'], 
-    [RESERVATION_SHEET_NAME]: ['ID_Reservasi', 'Timestamp', 'Status', 'RME', 'Nama_Pasien', 'Nama_Pemesan', 'No_HP', 'Alamat', 'Tanggal_Datang', 'Jam_Datang', 'Items', 'Keluhan', 'Catatan', 'Terapis', 'Data_Pemeriksaan'], 
-    [TREATMENT_SHEET_NAME]: ['ID_Treatment', 'Kategori', 'Nama', 'Deskripsi'], 
-    [PRODUCT_SHEET_NAME]: ['ID_Produk', 'Nama', 'Deskripsi'], 
-    [LOG_SHEET_NAME]: ['Timestamp', 'Function', 'Message', 'ErrorStack'] 
-  }; 
-  return headerMap[sheetName]; 
-}
-
-// Mengubah data dari sheet (array 2D) menjadi array of objects (JSON).
-function sheetToJSON(sheet) { 
-  const data = sheet.getDataRange().getValues(); 
-  if (data.length < 2) return []; 
-  const headers = data.shift(); 
-  return data.map(row => { 
-    let obj = {}; 
-    headers.forEach((col, index) => { 
-      obj[col] = row[index]; 
-    }); 
-    return obj; 
-  }); 
-}
-
-// Membuat nomor Rekam Medis Elektronik (RME) baru secara otomatis.
-function generateRME(sheet) {
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return 'NBLH-001'; // Jika belum ada data sama sekali.
-    try {
-        const lastRME = sheet.getRange(lastRow, 1).getValue();
-        const lastNumber = parseInt(lastRME.split('-')[1]);
-        const newNumber = (lastNumber + 1).toString().padStart(3, '0'); // Tambah 1 dan format jadi 3 digit.
-        return `NBLH-${newNumber}`;
-    } catch(e) {
-        // Fallback jika format RME terakhir tidak sesuai.
-        return `NBLH-${(lastRow).toString().padStart(3, '0')}`;
-    }
-}
-
-// Mencatat detail error ke dalam sheet Log.
-function logError(functionName, error) {
-    try {
-        getSheet(LOG_SHEET_NAME).appendRow([new Date(), functionName, error.message, error.stack]);
-    } catch(e) {
-        // Jika logging ke sheet gagal, log ke logger bawaan Apps Script.
-        Logger.log("Gagal menulis log: " + e.message);
-    }
-}
-
-/**
- * Fungsi setup awal. Dijalankan manual sekali saja dari editor Apps Script.
- * Fungsinya untuk membuat semua sheet yang diperlukan jika belum ada.
- */
-function setupInitialSheet() {
-    getSheet(PATIENT_SHEET_NAME);
-    getSheet(RESERVATION_SHEET_NAME);
-    getSheet(TREATMENT_SHEET_NAME);
-    getSheet(PRODUCT_SHEET_NAME);
-    getSheet(LOG_SHEET_NAME);
-    SpreadsheetApp.flush(); // Memastikan semua perubahan disimpan.
-    Logger.log('Setup completed.');
-}
+function createJsonResponse(data) { return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON); }
+function getSheet(sheetName) { const ss = SpreadsheetApp.getActiveSpreadsheet(); let sheet = ss.getSheetByName(sheetName); if (!sheet) { sheet = ss.insertSheet(sheetName); const headers = getHeadersForSheet(sheetName); if (headers) { sheet.appendRow(headers); sheet.setFrozenRows(1); sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold'); } } return sheet; }
+function getHeadersForSheet(sheetName) { const headerMap = { [PATIENT_SHEET_NAME]: ['RME', 'Nama_Pasien', 'Nama_Pemesan', 'No_HP', 'Instagram', 'Alamat', 'Tanggal_Lahir', 'Tanggal_Registrasi', 'Jenis_Kelamin'], [RESERVATION_SHEET_NAME]: ['ID_Reservasi', 'Timestamp', 'Status', 'RME', 'Nama_Pasien', 'Nama_Pemesan', 'No_HP', 'Alamat', 'Tanggal_Datang', 'Jam_Datang', 'Items', 'Keluhan', 'Catatan', 'Terapis', 'Data_Pemeriksaan'], [TREATMENT_SHEET_NAME]: ['ID_Treatment', 'Kategori', 'Nama', 'Deskripsi'], [PRODUCT_SHEET_NAME]: ['ID_Produk', 'Nama', 'Deskripsi'], [LOG_SHEET_NAME]: ['Timestamp', 'Function', 'Message', 'ErrorStack'] }; return headerMap[sheetName]; }
+function sheetToJSON(sheet) { const data = sheet.getDataRange().getValues(); if (data.length < 2) return []; const headers = data.shift(); return data.map(row => { let obj = {}; headers.forEach((col, index) => { obj[col] = row[index]; }); return obj; }); }
+function generateRME(sheet) { const lastRow = sheet.getLastRow(); if (lastRow < 2) return 'NBLH-001'; try { const lastRME = sheet.getRange(lastRow, 1).getValue(); const lastNumber = parseInt(lastRME.split('-')[1]); const newNumber = (lastNumber + 1).toString().padStart(3, '0'); return `NBLH-${newNumber}`; } catch(e) { return `NBLH-${(lastRow).toString().padStart(3, '0')}`; } }
+function logError(functionName, error) { try { getSheet(LOG_SHEET_NAME).appendRow([new Date(), functionName, error.message, error.stack]); } catch(e) { Logger.log("Gagal menulis log: " + e.message); } }
+function setupInitialSheet() { getSheet(PATIENT_SHEET_NAME); getSheet(RESERVATION_SHEET_NAME); getSheet(TREATMENT_SHEET_NAME); getSheet(PRODUCT_SHEET_NAME); getSheet(LOG_SHEET_NAME); SpreadsheetApp.flush(); Logger.log('Setup completed.'); }
