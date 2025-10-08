@@ -132,184 +132,124 @@
         // =================================================================================
 
         // --- 1. KONFIGURASI DAN STATE GLOBAL ---
-        // 'const' digunakan untuk variabel yang nilainya tidak akan berubah.
-        // URL ini adalah endpoint dari Google Apps Script yang berfungsi sebagai backend.
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw_FtGrjkFKgfBoBsNr5QVjNR8j3BbefSQXIz_b7CepMFYDMs6W1Qt9SdmHn_ISNW89/exec'; 
 
-        // 'let' digunakan untuk variabel yang nilainya bisa berubah.
-        // 'state' adalah sebuah objek yang menyimpan semua data sementara dan status aplikasi, seperti tab yang aktif, data dari server, dll.
         let state = {
-            activeTab: 'home', // Tab yang sedang aktif
+            activeTab: 'home', 
             isAuthenticated: false, // Status otentikasi admin
-            activeHomeTab: 'treatments', // Tab aktif di halaman home (treatment/produk)
-            selectedItems: [], // Item yang dipilih oleh user untuk reservasi
-            data: { // Cache untuk data dari server agar tidak perlu fetch berulang kali
+            pendingAction: null, // Menyimpan aksi yang tertunda saat meminta password
+            activeHomeTab: 'treatments', 
+            selectedItems: [], 
+            data: { 
                 treatments: [], 
                 products: [], 
                 searchResults: [], 
                 allReservations: [], 
                 allPatients: [] 
             },
-            rekapData: null, // Data untuk halaman laporan
-            rekapFilteredData: null, // Data laporan yang sudah difilter
-            currentCalendarDate: new Date() // Tanggal yang ditampilkan di kalender laporan
+            rekapData: null, 
+            rekapFilteredData: null, 
+            currentCalendarDate: new Date() 
         };
 
         // --- 2. LOGIKA PENGALIH TEMA (LIGHT/DARK MODE) ---
-        /**
-         * Fungsi untuk menerapkan tema (light/dark) saat halaman pertama kali dimuat.
-         * Mengambil tema yang tersimpan di localStorage browser.
-         */
         const applyInitialTheme = () => {
-            // localStorage.getItem('theme') mengambil nilai dari key 'theme'. Jika tidak ada, defaultnya 'light'.
             const theme = localStorage.getItem('theme') || 'light';
-            // document.documentElement merujuk pada tag <html>.
-            // classList.toggle('dark', boolean) akan menambah/menghapus class 'dark' berdasarkan nilai boolean.
             document.documentElement.classList.toggle('dark', theme === 'dark');
-            updateThemeIcon(theme); // Memperbarui ikon (bulan/matahari)
+            updateThemeIcon(theme); 
         };
         
-        /**
-         * Fungsi untuk mengubah tema dari light ke dark atau sebaliknya.
-         */
         const toggleTheme = () => {
-            // document.documentElement.classList.toggle('dark') akan mengubah status class 'dark' dan mengembalikan true jika class ditambahkan (menjadi dark), false jika dihapus.
             const isDark = document.documentElement.classList.toggle('dark');
             const theme = isDark ? 'dark' : 'light';
-            // localStorage.setItem('theme', theme) menyimpan pilihan tema user di browser.
             localStorage.setItem('theme', theme);
             updateThemeIcon(theme);
-            // Jika sedang di halaman rekap, render ulang grafik dengan warna tema yang baru.
             if (state.activeTab === 'rekap' && state.rekapData) {
                 renderAllRekapVisuals(state.rekapFilteredData || state.rekapData);
             }
         };
 
-        /**
-         * Fungsi untuk memperbarui ikon tema (bulan/matahari) di header.
-         * @param {string} theme - Tema saat ini ('dark' atau 'light').
-         */
         const updateThemeIcon = (theme) => {
             const icon = document.getElementById('theme-toggle-icon');
-            if (icon) { // Memastikan elemen ikon ada sebelum mengubah class-nya
+            if (icon) { 
                 icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
             }
         };
         
         // --- 3. INISIALISASI APLIKASI ---
-        /**
-         * Event listener yang akan berjalan ketika seluruh struktur HTML (DOM) selesai dimuat.
-         * Ini adalah titik awal dari eksekusi JavaScript aplikasi.
-         */
         document.addEventListener('DOMContentLoaded', () => {
-            applyInitialTheme(); // Terapkan tema awal
-            // setTimeout digunakan untuk menunda eksekusi kode, memberikan efek visual.
+            applyInitialTheme();
             setTimeout(() => {
-                // Sembunyikan layar animasi pembuka setelah 3 detik
                 const openingScreen = document.getElementById('opening-animation');
                 openingScreen.style.opacity = '0';
                 setTimeout(() => {
-                    // Hapus layar pembuka dari tampilan dan tampilkan konten utama
                     openingScreen.style.display = 'none';
                     document.getElementById('main-content').classList.remove('hidden');
-                }, 1000); // Tunggu 1 detik untuk transisi opacity selesai
+                }, 1000); 
             }, 3000); 
-            setupEventListeners(); // Daftarkan semua event listener utama
-            navigateTo('home'); // Buka halaman 'home' sebagai halaman default
+            setupEventListeners();
+            navigateTo('home'); 
         });
 
-        /**
-         * Fungsi untuk mendaftarkan event listener utama, seperti klik pada tab navigasi.
-         */
         const setupEventListeners = () => {
-            // document.querySelectorAll('.nav-tab') memilih semua elemen dengan class 'nav-tab'.
-            // .forEach() melakukan iterasi pada setiap elemen yang ditemukan.
             document.querySelectorAll('.nav-tab').forEach(tab => {
-                // Menambahkan event 'click' pada setiap tombol tab.
-                // () => navigateTo(...) adalah arrow function yang akan dieksekusi saat tombol diklik.
                 tab.addEventListener('click', () => navigateTo(tab.dataset.tab));
             });
         };
         
         // --- 4. KOMUNIKASI DENGAN BACKEND (GOOGLE APPS SCRIPT) ---
-        /**
-         * Fungsi generik untuk memanggil backend Google Apps Script.
-         * 'async' menandakan fungsi ini bisa berjalan secara asynchronous (tidak memblokir eksekusi lain).
-         * 'await' digunakan di dalamnya untuk menunggu hasil dari proses asynchronous (seperti fetch).
-         * @param {string} method - Metode HTTP ('GET' atau 'POST').
-         * @param {string} action - Perintah yang dikirim ke backend (misal: 'getReservations').
-         * @param {object} payload - Data tambahan yang dikirim (opsional).
-         * @returns {Promise<object>} - Hasil dari backend dalam bentuk objek JSON.
-         */
         async function callBackend(method, action, payload = {}) {
-            if (SCRIPT_URL.includes('AKfycbw_')) { // Cek jika URL masih default
-                // showToast("Peringatan: URL Google Apps Script belum diatur.", "warning");
-                // return { status: 'error', message: 'URL Script belum diatur.' };
-            }
-            setLoading(true); // Tampilkan loader global
-            try { // 'try...catch' digunakan untuk menangani error yang mungkin terjadi saat request.
+            setLoading(true); 
+            try { 
                 let url = SCRIPT_URL;
                 const options = { method, redirect: "follow", headers: { 'Content-Type': 'text/plain;charset=utf-8' } };
                 
-                // Jika metodenya GET, data dikirim melalui URL parameter.
                 if (method === 'GET') {
                     url += `?action=${action}&payload=${encodeURIComponent(JSON.stringify(payload))}`;
-                } else { // Jika metodenya POST, data dikirim melalui body request.
+                } else { 
                     options.body = JSON.stringify({ action, payload });
                 }
 
-                // 'fetch' adalah API browser untuk melakukan request jaringan. 'await' menunggu sampai response diterima.
                 const response = await fetch(url, options);
-                // Jika response status bukan 'ok' (misal: 404, 500), lemparkan error.
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                // 'await response.json()' mengubah response body menjadi objek JavaScript.
                 return await response.json();
             } catch (error) {
                 console.error('Error calling backend:', error);
                 showToast('Terjadi kesalahan koneksi ke server.', 'error');
                 return { status: 'error', message: 'Terjadi kesalahan koneksi.' };
-            } finally { // 'finally' akan selalu dieksekusi, baik terjadi error maupun tidak.
-                setLoading(false); // Sembunyikan loader global
+            } finally { 
+                setLoading(false); 
             }
         }
         
         // --- 5. NAVIGASI DAN RENDER HALAMAN ---
-        /**
-         * Fungsi utama untuk navigasi antar halaman (tab).
-         * @param {string} tabName - Nama tab tujuan (misal: 'home', 'reservations').
-         */
         async function navigateTo(tabName) {
-            // Daftar tab yang memerlukan password.
-            const protectedTabs = ['reservations', 'management', 'pasien', 'rekap'];
-            // Jika mencoba mengakses tab terproteksi tanpa otentikasi, tampilkan modal password.
+            // [PERUBAHAN] Proteksi sandi dikembalikan untuk tab tertentu
+            const protectedTabs = ['pasien', 'rekap', 'management']; // Tab 'reservations' tidak lagi diproteksi
             if (protectedTabs.includes(tabName) && !state.isAuthenticated) {
-                showPasswordModal(tabName);
-                return; // Hentikan eksekusi fungsi
+                showPasswordModal(tabName); // Memanggil modal dengan info tab tujuan
+                return; // Menghentikan navigasi lebih lanjut jika password dibutuhkan
             }
 
-            state.activeTab = tabName; // Update state tab aktif
-            // Update tampilan visual tab navigasi
+            state.activeTab = tabName; 
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.classList.toggle('active-tab', tab.dataset.tab === tabName);
                 tab.classList.toggle('tab', tab.dataset.tab !== tabName);
             });
 
             const appContent = document.getElementById('app-content');
-            // Tampilkan loader di area konten selagi data diambil.
             appContent.innerHTML = `<div class="text-center p-8"><div class="loader inline-block"></div></div>`;
             
-            // Atur visibilitas bar pencarian berdasarkan halaman
             const searchContainer = document.getElementById('search-container');
             const showSearch = ['home', 'reservations', 'pasien'].includes(tabName);
             searchContainer.classList.toggle('hidden', !showSearch);
             if(showSearch) setupSearchInput(tabName);
 
-            updateCartFab(); // Perbarui tampilan tombol keranjang
+            updateCartFab();
 
             const header = document.getElementById('main-header');
             const themeButton = `<button id="theme-toggle" onclick="toggleTheme()" class="absolute top-0 right-0 p-2 text-lg text-secondary"><i id="theme-toggle-icon" class="fas fa-moon"></i></button>`;
             
-            // Pengambilan data penting di awal jika belum ada di state (cache).
             if (state.data.treatments.length === 0 || state.data.products.length === 0) {
                  const itemsResult = await callBackend('GET', 'getItems');
                  if (itemsResult.status === 'success') {
@@ -322,7 +262,6 @@
                 if(patientsResult.status === 'success') state.data.allPatients = patientsResult.data || [];
             }
             
-            // 'switch' adalah struktur kontrol untuk memilih blok kode yang akan dieksekusi berdasarkan nilai 'tabName'.
             switch (tabName) {
                 case 'home':
                     header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Reservasi Online</h1><p class="text-secondary">Pilih treatment atau produk Anda</p>${themeButton}`;
@@ -361,18 +300,13 @@
                     appContent.innerHTML = renderManagementPage();
                     break;
             }
-            // Pastikan ikon tema sesuai setelah navigasi.
             updateThemeIcon(localStorage.getItem('theme') || 'light');
         }
         
         // --- 6. FUNGSI-FUNGSI PENCARIAN ---
-        /**
-         * Mengatur input pencarian dinamis sesuai halaman aktif.
-         * @param {string} tabName - Nama tab saat ini.
-         */
         function setupSearchInput(tabName) {
             const container = document.getElementById('search-container');
-            let placeholder = '', handler; // Variabel untuk placeholder dan fungsi handler-nya
+            let placeholder = '', handler; 
             switch(tabName) {
                 case 'home': placeholder = 'Cari treatment atau produk...'; handler = handleHomeSearch; break;
                 case 'reservations': placeholder = 'Cari reservasi (nama, RME)...'; handler = handleReservationsSearch; break;
@@ -382,71 +316,49 @@
             document.getElementById('dynamic-search-input').addEventListener('input', handler);
         }
 
-        /**
-         * Handler untuk pencarian di halaman home.
-         * @param {Event} e - Event object dari input.
-         */
         function handleHomeSearch(e) { 
-            const query = e.target.value.toLowerCase(); // Ambil nilai input dan ubah ke huruf kecil
-            // .filter() membuat array baru berisi elemen yang lolos tes (kondisi).
+            const query = e.target.value.toLowerCase(); 
             const filteredTreatments = state.data.treatments.filter(t => t.Nama.toLowerCase().includes(query)); 
             const filteredProducts = state.data.products.filter(p => p.Nama.toLowerCase().includes(query)); 
             if (state.activeHomeTab === 'treatments') renderTreatments(filteredTreatments); else renderProducts(filteredProducts); 
         }
 
-        /**
-         * Handler untuk pencarian di halaman reservasi.
-         * @param {Event} e - Event object dari input.
-         */
         function handleReservationsSearch(e) { 
             const query = e.target.value.toLowerCase(); 
             const filtered = state.data.allReservations.filter(res => res.Nama_Pasien.toLowerCase().includes(query) || res.RME.toLowerCase().includes(query)); 
             renderReservationsPage(filtered); 
         }
 
-        /**
-         * Handler untuk pencarian di halaman pasien.
-         * @param {Event} e - Event object dari input.
-         */
         function handlePatientsSearch(e) { 
             const query = e.target.value.toLowerCase(); 
             const filtered = state.data.allPatients.filter(p => p.Nama_Pasien.toLowerCase().includes(query) || p.RME.toLowerCase().includes(query)); 
             renderPatientsManagementPage(filtered); 
         }
 
-        /**
-         * Handler untuk pencarian pasien lama di modal form reservasi.
-         * @param {Event} e - Event object dari input.
-         */
         async function handleSearchForOldPatient(e) {
             const query = e.target.value.toLowerCase();
             const resultsContainer = document.getElementById('search-results-pasien-lama-modal');
             if (!resultsContainer) return;
-            if (query.length < 2) { resultsContainer.classList.add('hidden'); return; } // Cari setelah 2 karakter
+            if (query.length < 2) { resultsContainer.classList.add('hidden'); return; }
             const result = await callBackend('GET', 'getPatients', { query: query });
-            resultsContainer.innerHTML = ''; // Kosongkan hasil sebelumnya
+            resultsContainer.innerHTML = '';
             if (result.status === 'success' && result.data.length > 0) {
-                state.data.searchResults = result.data; // Simpan hasil pencarian di state
+                state.data.searchResults = result.data; 
                 result.data.forEach((p, index) => {
-                    // Buat elemen HTML untuk setiap hasil pencarian
                     resultsContainer.innerHTML += `<div data-index="${index}" class="p-3 hover:bg-pink-100 dark:hover:bg-gray-700 cursor-pointer border-b border-primary search-result-item"><p class="font-semibold">${p.Nama_Pasien} <span class="text-sm text-secondary">(${p.RME})</span></p><p class="text-sm text-secondary">${p.Alamat || ''}</p></div>`;
                 });
-                resultsContainer.classList.remove('hidden'); // Tampilkan hasil
+                resultsContainer.classList.remove('hidden'); 
             } else {
                 resultsContainer.innerHTML = `<div class="p-3 text-secondary">Tidak ada hasil ditemukan.</div>`;
                 resultsContainer.classList.remove('hidden');
             }
         }
 
-        /**
-         * Memilih pasien dari hasil pencarian dan mengisi form reservasi secara otomatis.
-         * @param {number} index - Index pasien di array state.data.searchResults.
-         */
         window.selectPatientAndFillForm = (index) => {
             const patient = state.data.searchResults[index];
             if (!patient) return;
             const form = document.getElementById('reservation-form');
-            if (form) { // Isi field form dengan data pasien
+            if (form) { 
                 form.requesterName.value = patient.Nama_Pemesan || patient.Nama_Pasien || '';
                 form.phone.value = patient.No_HP || '';
                 form.instagram.value = patient.Instagram || '';
@@ -457,12 +369,10 @@
                     const dob = new Date(patient.Tanggal_Lahir);
                     if (!isNaN(dob.getTime())) { 
                         form.dob.value = dob.toISOString().split('T')[0];
-                        // Memicu event 'change' secara manual agar fungsi updateAgeAndDay berjalan
                         form.dob.dispatchEvent(new Event('change'));
                     }
                 }
             }
-            // Sembunyikan hasil pencarian setelah dipilih
             const resultsContainer = document.getElementById('search-results-pasien-lama-modal');
             if (resultsContainer) resultsContainer.classList.add('hidden');
             const searchInput = document.getElementById('search-old-patient-input');
@@ -470,12 +380,6 @@
         }
 
         // --- 7. FUNGSI-FUNGSI RENDER TAMPILAN ---
-        // Fungsi-fungsi ini bertanggung jawab untuk menghasilkan HTML dari data dan menampilkannya di halaman.
-
-        /**
-         * Merender halaman daftar reservasi.
-         * @param {Array<object>} reservations - Array berisi data reservasi.
-         */
         function renderReservationsPage(reservations) {
             const appContent = document.getElementById('app-content');
             if (!reservations || reservations.length === 0) {
@@ -483,22 +387,15 @@
                 return;
             }
             const statusStyles = { 'Menunggu': 'text-blue-500 border-blue-200 bg-blue-50 dark:bg-opacity-10', 'Selesai': 'text-green-500 border-green-200 bg-green-50 dark:bg-opacity-10' };
-            // .sort() mengurutkan array. Di sini, diurutkan berdasarkan tanggal datang terbaru.
             const sortedReservations = reservations.sort((a,b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang));
-            // .map() membuat array baru dengan mengubah setiap elemen. Di sini, setiap objek reservasi diubah menjadi string HTML.
-            // .join('') menggabungkan semua string HTML dalam array menjadi satu string panjang.
             appContent.innerHTML = `<div class="space-y-4">${sortedReservations.map(res => {
                 const visitDate = new Date(res.Tanggal_Datang);
                 const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID',{dateStyle:'medium', timeStyle:'short'}) : 'Tanggal Invalid';
-                // Template literal (`) digunakan untuk membuat string HTML dengan lebih mudah.
-                return `<div class="p-4 rounded-lg shadow bg-card"><div class="flex justify-between items-start"><div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${JSON.parse(res.Items || '[]').join(', ')}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span></div><p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p><div class="mt-3 flex justify-end items-center gap-4"><button onclick="showPatientHistoryModal('${res.RME}')" class="text-purple-500 hover:underline text-sm font-medium">Riwayat</button><button onclick="showReservationDetailsModal('${res.ID_Reservasi}')" class="text-blue-500 hover:underline text-sm font-medium">Detail</button>${res.Status !== 'Selesai' ? `<button onclick="showCompleteModal('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button>`: ''}</div></div>`;
+                
+                return `<div class="p-4 rounded-lg shadow bg-card"><div class="flex justify-between items-start"><div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${JSON.parse(res.Items || '[]').join(', ')}</p></div><span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span></div><p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p><div class="mt-3 flex justify-end items-center gap-4"><button onclick="showPatientHistoryModal('${res.RME}')" class="text-purple-500 hover:underline text-sm font-medium">Riwayat</button><button onclick="showReservationDetailsModal('${res.ID_Reservasi}')" class="text-blue-500 hover:underline text-sm font-medium">Detail</button>${res.Status !== 'Selesai' ? `<button onclick="requestCompleteAction('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button>`: ''}</div></div>`;
             }).join('')}</div>`;
         }
 
-        /**
-         * Merender halaman manajemen pasien.
-         * @param {Array<object>} patients - Array berisi data pasien.
-         */
         function renderPatientsManagementPage(patients) {
             const appContent = document.getElementById('app-content');
             if (!patients || patients.length === 0) {
@@ -511,7 +408,6 @@
                         <p class="font-bold">${p.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${p.RME})</span></p>
                         <p class="text-sm text-secondary"><i class="fas fa-phone-alt fa-fw mr-1"></i> ${p.No_HP || 'N/A'}</p>
                     </div>
-                    <!-- JSON.stringify(p) mengubah objek pasien menjadi string agar bisa dilewatkan sebagai argumen fungsi onclick. -->
                     <button onclick='showUpdatePatientModal(${JSON.stringify(p)})' class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-blue-600">Update</button>
                 </div>
             `).join('')}</div>`;
@@ -519,39 +415,61 @@
         
         // --- 7a. Fungsi Render untuk Halaman Home ---
         function renderHomePage() { return `<div class="flex border-b-2 border-primary mb-4"><button data-tab="treatments" class="home-tab active-tab flex-1 p-3 text-center text-secondary">Treatments</button><button data-tab="products" class="home-tab tab flex-1 p-3 text-center text-secondary">Produk</button></div><div id="home-content"></div>`; }
-        
         function setupHomeEventListeners() { document.querySelectorAll('.home-tab').forEach(tab => { tab.addEventListener('click', () => { state.activeHomeTab = tab.dataset.tab; document.querySelectorAll('.home-tab').forEach(t => t.classList.remove('active-tab')); tab.classList.add('active-tab'); if (state.activeHomeTab === 'treatments') renderTreatments(state.data.treatments); else renderProducts(state.data.products); }); }); }
-        
         function renderTreatments(treatmentsToRender) { const categories = ['All', ...new Set(state.data.treatments.map(t => t.Kategori))]; let filterHtml = `<div class="mb-4 overflow-x-auto whitespace-nowrap pb-2">${categories.map(cat => `<button data-category="${cat}" class="category-filter inline-block px-4 py-2 mr-2 rounded-full shadow-sm text-sm ${state.treatmentFilter === cat ? 'bg-theme-pink text-white' : 'bg-card text-primary'}">${cat}</button>`).join('')}</div>`; let itemsHtml = `<div class="grid grid-cols-1 gap-4">${(Array.isArray(treatmentsToRender) ? treatmentsToRender : []).map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Treatment); return `<div data-id="${item.ID_Treatment}" data-type="treatment" class="item-card rounded-lg shadow overflow-hidden flex cursor-pointer bg-card ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFC0CB/FF6B8A?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold">${item.Nama}</h3><p class="text-sm text-secondary">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-secondary py-8">Tidak ada treatment ditemukan.</p>`}</div>`; document.getElementById('home-content').innerHTML = filterHtml + itemsHtml; setupItemSelection(); }
-        
         function renderProducts(productsToRender) { let itemsHtml = `<div class="grid grid-cols-1 gap-4">${(Array.isArray(productsToRender) ? productsToRender : []).map(item => { const isSelected = state.selectedItems.some(i => i.id === item.ID_Produk); return `<div data-id="${item.ID_Produk}" data-type="product" class="item-card rounded-lg shadow overflow-hidden flex cursor-pointer bg-card ${isSelected ? 'ring-2 ring-pink-500' : ''}"><img src="https://placehold.co/300x200/FFFACD/FFD700?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover"><div class="p-4 flex-1"><h3 class="font-semibold">${item.Nama}</h3><p class="text-sm text-secondary">${item.Deskripsi}</p></div></div>`; }).join('') || `<p class="text-center text-secondary py-8">Tidak ada produk ditemukan.</p>`}</div>`; document.getElementById('home-content').innerHTML = itemsHtml; setupItemSelection(); }
-        
         function setupItemSelection() { document.querySelectorAll('.category-filter').forEach(btn => btn.addEventListener('click', (e) => { state.treatmentFilter = e.target.dataset.category; const filtered = state.treatmentFilter === 'All' ? state.data.treatments : state.data.treatments.filter(t => t.Kategori === state.treatmentFilter); renderTreatments(filtered); })); document.querySelectorAll('.item-card').forEach(card => card.addEventListener('click', () => { const itemId = card.dataset.id; const itemIndex = state.selectedItems.findIndex(i => i.id === itemId); if (itemIndex > -1) { state.selectedItems.splice(itemIndex, 1); card.classList.remove('ring-2', 'ring-pink-500'); } else { const type = card.dataset.type; const source = type === 'treatment' ? state.data.treatments : state.data.products; const idField = type === 'treatment' ? 'ID_Treatment' : 'ID_Produk'; const itemData = source.find(i => i[idField] === itemId); if (itemData) { state.selectedItems.push({ id: itemId, name: itemData.Nama, category: itemData.Kategori || null }); card.classList.add('ring-2', 'ring-pink-500'); } } updateCartFab(); })); }
-        
         function updateCartFab() { const fab = document.getElementById('booking-cart-fab'); const count = document.getElementById('cart-count'); fab.classList.toggle('hidden', state.selectedItems.length === 0 || !['home'].includes(state.activeTab)); count.textContent = state.selectedItems.length; }
         
         // --- 8. FUNGSI-FUNGSI MODAL (POP-UP) ---
-        // Fungsi-fungsi ini dibuat sebagai properti dari objek 'window' agar bisa dipanggil dari atribut 'onclick' di HTML.
+
+        /**
+         * Memeriksa otentikasi sebelum menjalankan aksi 'selesaikan reservasi'.
+         * @param {string} reservationId - ID reservasi yang akan diselesaikan.
+         */
+        window.requestCompleteAction = (reservationId) => {
+            if (state.isAuthenticated) {
+                showCompleteModal(reservationId);
+            } else {
+                state.pendingAction = () => showCompleteModal(reservationId);
+                showPasswordModal(); // Panggil tanpa argumen
+            }
+        };
 
         /**
          * Menampilkan modal untuk memasukkan password.
-         * @param {string} targetTab - Tab yang akan dituju setelah password benar.
+         * @param {string|null} targetTab - (Opsional) Tab tujuan jika login karena navigasi.
          */
-        window.showPasswordModal = (targetTab) => {
-            const modalHtml = `<div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"><div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card"><form id="password-form" class="p-8 space-y-4"><h2 class="text-2xl font-bold text-center theme-pink">Akses Terbatas</h2><p class="text-center text-sm text-secondary">Silakan masukkan sandi.</p><input type="password" id="password-input" name="password" placeholder="Sandi" class="mt-1 w-full text-center border-gray-300 rounded-md shadow-sm input-field p-3" required autocomplete="current-password"><div class="flex justify-center gap-3 pt-4"><button type="button" onclick="closeModal('password-modal');navigateTo('home');" class="px-6 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Kembali</button><button type="submit" class="px-6 py-2 bg-theme-pink text-white rounded-lg">Masuk</button></div></form></div></div>`;
+        window.showPasswordModal = (targetTab = null) => {
+            const cancelAction = targetTab ? "navigateTo('home')" : "closeModal('password-modal')";
+            const modalHtml = `<div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60"><div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card"><form id="password-form" class="p-8 space-y-4"><h2 class="text-2xl font-bold text-center theme-pink">Akses Terbatas</h2><p class="text-center text-sm text-secondary">Silakan masukkan sandi.</p><input type="password" id="password-input" name="password" placeholder="Sandi" class="mt-1 w-full text-center border-gray-300 rounded-md shadow-sm input-field p-3" required autocomplete="current-password"><div class="flex justify-center gap-3 pt-4"><button type="button" onclick="${cancelAction}" class="px-6 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Batal</button><button type="submit" class="px-6 py-2 bg-theme-pink text-white rounded-lg">Masuk</button></div></form></div></div>`;
             document.getElementById('modals-container').innerHTML = modalHtml;
             document.getElementById('password-form').addEventListener('submit', (e) => handlePasswordSubmit(e, targetTab));
-            document.getElementById('password-input').focus(); // Langsung fokus ke input password
+            document.getElementById('password-input').focus(); 
         };
         
-        const handlePasswordSubmit = (e, targetTab) => {
-            e.preventDefault(); // Mencegah form melakukan reload halaman.
+        /**
+         * Menangani submit form password.
+         * @param {Event} e - Event object.
+         * @param {string|null} targetTab - Tab tujuan jika ada.
+         */
+        const handlePasswordSubmit = (e, targetTab = null) => {
+            e.preventDefault(); 
             const passwordInput = document.getElementById('password-input');
-            if (passwordInput.value === '112211') { // Cek password (hardcoded)
+            if (passwordInput.value === '112211') {
                 showToast('Akses diberikan!', 'success');
                 state.isAuthenticated = true; 
                 closeModal('password-modal');
-                navigateTo(targetTab); 
+                
+                // [PERUBAHAN] Logika setelah login berhasil
+                if (targetTab) {
+                    // Jika login dipicu oleh navigasi tab, arahkan ke tab tersebut
+                    navigateTo(targetTab);
+                } else if (typeof state.pendingAction === 'function') {
+                    // Jika login dipicu oleh aksi lain (tombol selesaikan), jalankan aksi tersebut
+                    state.pendingAction();
+                    state.pendingAction = null; 
+                }
             } else {
                 showToast('Sandi salah, coba lagi.', 'error');
                 passwordInput.value = ''; 
@@ -588,7 +506,7 @@
             document.getElementById('modals-container').innerHTML = modalHtml; 
             document.getElementById('complete-form').addEventListener('submit', handleCompleteSubmit); 
         };
-        const handleCompleteSubmit = async (e) => { e.preventDefault(); const form = e.target; const formData = new FormData(form); const updatedItems = Array.from(form.querySelectorAll('input[name="updatedItems"]:checked')).map(cb => cb.value); const data = { reservationId: formData.get('reservationId'), therapist: formData.get('therapist'), temp: formData.get('temp'), weight: formData.get('weight'), height: formData.get('height'), lila: formData.get('lila'), examNotes: formData.get('examNotes'), updatedComplaint: formData.get('updatedComplaint'), updatedItems: updatedItems }; const result = await callBackend('POST', 'completeReservation', data); if (result.status === 'success') { closeModal('complete-modal'); showToast(result.message, 'success'); navigateTo('reservations'); } else { showToast(`Gagal: ${result.message}`, 'error'); } };
+        const handleCompleteSubmit = async (e) => { e.preventDefault(); const form = e.target; const formData = new FormData(form); const updatedItems = Array.from(form.querySelectorAll('input[name="updatedItems"]:checked')).map(cb => cb.value); const data = { reservationId: formData.get('reservationId'), therapist: formData.get('therapist'), temp: formData.get('temp'), weight: formData.get('weight'), height: formData.get('height'), lila: formData.get('lila'), examNotes: formData.get('examNotes'), updatedComplaint: formData.get('updatedComplaint'), updatedItems: updatedItems }; const result = await callBackend('POST', 'completeReservation', data); if (result.status === 'success') { closeModal('complete-modal'); showToast(result.message, 'success'); navigateTo('reservasi'); } else { showToast(`Gagal: ${result.message}`, 'error'); } };
         
         /** Menampilkan modal untuk update data pasien. */
         window.showUpdatePatientModal = (patient) => {
@@ -628,19 +546,14 @@
         function calculateStatsFromReservations(reservations, allPatients) { const stats = { dailyTrend: {}, categoryCounts: {}, treatmentNameCounts: {}, genderCounts: {}, dayCounts: {}, peakHourCounts: {}, monthCounts: {}, therapistCounts: {}, calendarData: {} }; const treatmentCategoryMap = state.data.treatments.reduce((map, item) => ({ ...map, [item.Nama]: item.Kategori }), {}); const patientDataMap = allPatients.reduce((map, p) => ({ ...map, [p.RME]: p }), {}); const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']; const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']; reservations.forEach(res => { const visitDate = new Date(res.Tanggal_Datang); if (isNaN(visitDate.getTime())) return; const dateKey = visitDate.toISOString().split('T')[0]; stats.dailyTrend[dateKey] = (stats.dailyTrend[dateKey] || 0) + 1; stats.calendarData[dateKey] = (stats.calendarData[dateKey] || 0) + 1; try { JSON.parse(res.Items || '[]').forEach(itemName => { stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1; const category = treatmentCategoryMap[itemName]; if (category) stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1; }); } catch (e) {} const patient = patientDataMap[res.RME]; if (patient && patient.Jenis_Kelamin) stats.genderCounts[patient.Jenis_Kelamin] = (stats.genderCounts[patient.Jenis_Kelamin] || 0) + 1; stats.dayCounts[days[visitDate.getDay()]] = (stats.dayCounts[days[visitDate.getDay()]] || 0) + 1; stats.peakHourCounts[visitDate.getHours().toString().padStart(2, '0') + ':00'] = (stats.peakHourCounts[visitDate.getHours().toString().padStart(2, '0') + ':00'] || 0) + 1; const monthYearKey = `${months[visitDate.getMonth()]} ${visitDate.getFullYear()}`; stats.monthCounts[monthYearKey] = (stats.monthCounts[monthYearKey] || 0) + 1; if (res.Terapis) stats.therapistCounts[res.Terapis] = (stats.therapistCounts[res.Terapis] || 0) + 1; }); return stats; }
         function renderAllRekapVisuals(dataToRender) { if (!dataToRender) return; const { stats, rawReservations } = dataToRender; const allStats = state.rekapData.stats; createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend).sort(), Object.keys(stats.dailyTrend).sort().map(key => stats.dailyTrend[key]), 'Grafik Tren Reservasi Harian'); createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Distribusi Kategori Treatment'); createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Treatment Terpopuler'); createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Distribusi Jenis Kelamin Pasien'); createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Hari Kunjungan Teramai'); createChart('hourChart', 'line', Object.keys(allStats.peakHourCounts).sort(), Object.keys(allStats.peakHourCounts).sort().map(key => stats.peakHourCounts[key] || 0), 'Jam Kunjungan Puncak'); createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Bulan Kunjungan Teramai'); createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Kinerja Terapis/Bidan'); createChart('ageChart', 'bar', Object.keys(allStats.ageDemographics), Object.values(allStats.ageDemographics), 'Demografi Usia Pasien'); createChart('addressChart', 'bar', Object.keys(allStats.addressDemographics), Object.values(allStats.addressDemographics), 'Domisili Pasien Teratas'); renderCalendar(stats.calendarData); renderRekapTable(rawReservations); }
         
-        /**
-         * [DIPERBAIKI] Fungsi untuk membuat grafik menggunakan Chart.js.
-         */
         function createChart(canvasId, type, labels, data, title) {
             const ctx = document.getElementById(canvasId);
             if (!ctx) return;
-            // Hancurkan chart sebelumnya jika ada untuk mencegah memory leak.
             if (window.myCharts && window.myCharts[canvasId]) {
                 window.myCharts[canvasId].destroy();
             }
             if (!window.myCharts) window.myCharts = {};
 
-            // Jika tidak ada data, tampilkan pesan.
             if (!data || data.length === 0 || data.every(v => v === 0)) {
                 ctx.parentElement.innerHTML = `<div class="flex items-center justify-center h-full text-center text-gray-400 text-sm p-4">(Tidak ada data untuk ditampilkan)</div>`;
                 return;
@@ -649,24 +562,22 @@
             const isDark = document.documentElement.classList.contains('dark');
             const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
             const textColor = isDark ? '#f9fafb' : '#111827';
-            
-            // [PENINGKATAN] Palet warna baru yang lebih jelas dan berbeda.
             const vibrantColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8D6E63', '#F48FB1', '#81D4FA', '#FFF59D', '#A5D6A7'];
 
             window.myCharts[canvasId] = new Chart(ctx, {
-                type: type, // tipe chart: 'line', 'bar', 'pie', 'doughnut'
+                type: type,
                 data: {
-                    labels: labels, // Label untuk sumbu X
+                    labels: labels, 
                     datasets: [{
                         label: 'Jumlah',
-                        data: data, // Data untuk sumbu Y
-                        backgroundColor: vibrantColors, // Warna isian grafik
-                        borderColor: isDark ? '#1f2937' : '#ffffff', // Warna border grafik
+                        data: data, 
+                        backgroundColor: vibrantColors, 
+                        borderColor: isDark ? '#1f2937' : '#ffffff', 
                         borderWidth: (type === 'pie' || type === 'doughnut') ? 2 : 1
                     }]
                 },
                 options: {
-                    indexAxis: type === 'bar' && labels.length > 8 ? 'y' : 'x', // Buat bar chart horizontal jika label terlalu banyak
+                    indexAxis: type === 'bar' && labels.length > 8 ? 'y' : 'x',
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
@@ -674,8 +585,6 @@
                             display: ['pie', 'doughnut'].includes(type),
                             labels: { color: textColor }
                         },
-                        // [PERBAIKAN] Menambahkan konfigurasi judul pada chart.
-                        // Ini penting agar judul bisa diambil saat menampilkan chart di modal.
                         title: {
                             display: true,
                             text: title,
@@ -691,45 +600,29 @@
             });
         }
         
-        /**
-         * [DIPERBAIKI] Menampilkan modal dengan versi perbesaran (zoom) dari sebuah grafik.
-         */
         window.showChartModal = (canvasId) => {
             const originalChart = window.myCharts[canvasId];
             if (!originalChart) return;
-
-            // Mengambil judul dari konfigurasi chart yang sudah disimpan sebelumnya.
             const title = originalChart.config.options.plugins.title.text;
-
             const modalHtml = `<div id="chart-zoom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4"><div class="bg-card rounded-lg shadow-xl w-full h-full flex flex-col"><div class="p-4 border-b border-primary flex justify-between items-center"><h2 class="text-xl font-bold theme-pink">${title}</h2><button onclick="closeModal('chart-zoom-modal')" class="text-secondary text-2xl">&times;</button></div><div class="p-4 flex-grow relative"><canvas id="zoomed-chart-canvas"></canvas></div></div></div>`;
             document.getElementById('modals-container').innerHTML = modalHtml;
             
-            // Menggunakan setTimeout untuk memastikan elemen canvas sudah ada di DOM sebelum diakses.
             setTimeout(() => {
                 const zoomedCtx = document.getElementById('zoomed-chart-canvas');
                 if (!zoomedCtx) {
                     console.error("Canvas untuk zoom tidak ditemukan!");
                     return;
                 }
-                
-                // [FIX] Mengkloning konfigurasi chart dengan cara yang aman untuk menghindari error
-                // serialisasi JSON. Objek config dari Chart.js tidak selalu aman untuk di-stringify.
-                // Kita membuat objek config baru dengan menyalin properti yang dibutuhkan dan menimpa
-                // options yang diperlukan untuk tampilan modal.
                 const newConfig = {
                     type: originalChart.config.type,
-                    data: originalChart.config.data, // Data biasanya aman untuk disalin
+                    data: originalChart.config.data,
                     options: { 
-                        ...originalChart.config.options, // Salin semua options asli
-                        maintainAspectRatio: false,      // Timpa properti untuk modal
+                        ...originalChart.config.options, 
+                        maintainAspectRatio: false,
                         responsive: true,
                     }
                 };
-                
-                // Hancurkan instance chart zoom sebelumnya jika ada.
                 if (window.zoomedChart) window.zoomedChart.destroy();
-                
-                // Buat chart baru di dalam modal menggunakan konfigurasi yang baru.
                 window.zoomedChart = new Chart(zoomedCtx, newConfig);
             }, 0); 
         };
