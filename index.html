@@ -568,6 +568,8 @@
                         </div>
                         <p class="text-sm text-secondary mt-2"><i class="fas fa-calendar-alt fa-fw mr-1"></i> ${displayDate}</p>
                         <div class="mt-3 flex justify-end items-center gap-4">
+                            <!-- //* PERUBAHAN: Penambahan tombol "Cetak PDF" -->
+                            <button onclick="handlePrintReservation('${res.ID_Reservasi}')" class="text-gray-500 hover:text-pink-500 text-sm font-medium flex items-center gap-1"><i class="fas fa-print fa-fw"></i>Cetak</button>
                             <button onclick="showPatientHistoryModal('${res.RME}')" class="text-purple-500 hover:underline text-sm font-medium">Riwayat</button>
                             <button onclick="showReservationDetailsModal('${res.ID_Reservasi}')" class="text-blue-500 hover:underline text-sm font-medium">Detail</button>
                             ${res.Status !== 'Selesai' ? `<button onclick="requestCompleteAction('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button>`: ''}
@@ -1146,6 +1148,55 @@
 
         // --- 9. FUNGSI UTILITAS (HELPERS) ---
         
+        /**
+         * @description **[FUNGSI BARU]** Menangani klik tombol cetak PDF.
+         * @param {string} reservationId - ID reservasi yang akan dicetak.
+         */
+        window.handlePrintReservation = async (reservationId) => {
+            showToast('Sedang mempersiapkan PDF, mohon tunggu...', 'info');
+            // Menampilkan loader global saat proses pembuatan PDF
+            setLoading(true); 
+            const result = await callBackend('GET', 'generatePdf', { reservationId });
+            setLoading(false); // Sembunyikan loader setelah selesai
+            
+            if (result.status === 'success' && result.data.base64) {
+                downloadPdfFromBase64(result.data.base64, result.data.fileName);
+                showToast('PDF berhasil dibuat dan sedang diunduh!', 'success');
+            } else {
+                showToast(`Gagal membuat PDF: ${result.message}`, 'error');
+            }
+        };
+
+        /**
+         * @description **[FUNGSI BARU]** Mengunduh file PDF dari string base64.
+         * @param {string} base64String - Data PDF dalam format base64.
+         * @param {string} fileName - Nama file yang akan diunduh.
+         */
+        function downloadPdfFromBase64(base64String, fileName) {
+            try {
+                const byteCharacters = atob(base64String);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } catch (error) {
+                console.error('Download PDF error:', error);
+                showToast('Gagal mengunduh PDF. Lihat konsol untuk detail.', 'error');
+            }
+        }
+
         /** @description Menerapkan tema awal (light/dark) berdasarkan localStorage. */
         const applyInitialTheme = () => { const theme = localStorage.getItem('theme') || 'light'; document.documentElement.classList.toggle('dark', theme === 'dark'); updateThemeIcon(theme); };
         
@@ -1176,4 +1227,3 @@
     </script>
 </body>
 </html>
-
