@@ -22,6 +22,10 @@ const TREATMENT_SHEET_NAME = 'Treatments';
 const PRODUCT_SHEET_NAME = 'Products';
 const LOG_SHEET_NAME = 'Log'; // Sheet untuk mencatat error
 
+// !!! PENTING: Ganti ID di bawah ini dengan ID file Google Slide template Anda !!!
+// Petunjuk: Buka file Google Slide, salin ID dari URL. Contoh: .../d/INI_ADALAH_ID_NYA/edit
+const TEMPLATE_ID = '1a9EMmne_y3pDUu5yoq7a9L0zVcgV2h-pfoyGRbooWak';
+
 // --- 2. FUNGSI UTAMA WEB APP (ENTRY POINT) ---
 
 /**
@@ -46,6 +50,7 @@ function doGet(e) {
       case 'getItems':          response = getItems(); break;
       case 'getRekapData':      response = getRekapData(); break;
       case 'getPatientHistory': response = getPatientHistory(payload); break; 
+      case 'generatePdf':       response = generatePatientStatusPdf(payload); break; // <-- PENAMBAHAN FUNGSI BARU
       default:                  response = { status: 'error', message: 'Invalid GET action' };
     }
     // Mengembalikan hasil sebagai response JSON.
@@ -92,6 +97,82 @@ function doPost(e) {
 
 // --- 3. FUNGSI-FUNGSI HANDLER (LOGIKA BISNIS) ---
 // Fungsi-fungsi ini berisi logika utama dari aplikasi.
+
+/**
+ * **[FUNGSI BARU]**
+ * Membuat PDF status pasien berdasarkan template Google Slide.
+ * @param {object} payload - Objek yang berisi `reservationId`.
+ * @returns {object} - Objek status berisi data PDF dalam format base64.
+ */
+function generatePatientStatusPdf(payload) {
+  if (TEMPLATE_ID === 'GANTI_DENGAN_ID_GOOGLE_SLIDE_ANDA' || !TEMPLATE_ID) {
+    return { status: 'error', message: 'ID Template Google Slide belum diatur di skrip backend (Code.gs).' };
+  }
+
+  const { reservationId } = payload;
+  if (!reservationId) return { status: 'error', message: 'ID Reservasi tidak valid.' };
+
+  const reservations = sheetToJSON(getSheet(RESERVATION_SHEET_NAME));
+  const patients = sheetToJSON(getSheet(PATIENT_SHEET_NAME));
+
+  const reservation = reservations.find(r => r.ID_Reservasi === reservationId);
+  if (!reservation) return { status: 'error', message: 'Data reservasi tidak ditemukan.' };
+
+  const patient = patients.find(p => p.RME === reservation.RME);
+  if (!patient) return { status: 'error', message: 'Data pasien tidak ditemukan.' };
+  
+  try {
+    const copyFile = DriveApp.getFileById(TEMPLATE_ID).makeCopy(`Status Pasien - ${patient.Nama_Pasien} - ${new Date().getTime()}`);
+    const presentation = SlidesApp.openById(copyFile.getId());
+    const slide = presentation.getSlides()[0]; // Mengasumsikan template hanya 1 slide
+
+    const dob = new Date(patient.Tanggal_Lahir);
+    const visitDate = new Date(reservation.Tanggal_Datang);
+
+    let ageString = 'Tanggal lahir invalid';
+    if (!isNaN(dob.getTime())) {
+      let years = visitDate.getFullYear() - dob.getFullYear();
+      let months = visitDate.getMonth() - dob.getMonth();
+      let days = visitDate.getDate() - dob.getDate();
+      if (days < 0) { months--; days += new Date(visitDate.getFullYear(), visitDate.getMonth(), 0).getDate(); }
+      if (months < 0) { years--; months += 12; }
+      ageString = `${years} thn, ${months} bln, ${days} hr`;
+    }
+
+    const replacements = {
+      '<<NAMABAYI>>': patient.Nama_Pasien || '',
+      '<<TTL>>': !isNaN(dob.getTime()) ? dob.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A',
+      '<<UMUR>>': ageString,
+      '<<JENISKELAMIN>>': patient.Jenis_Kelamin || '',
+      '<<ALAMAT>>': patient.Alamat || '',
+      '<<NAMAPEMESAN>>': reservation.Nama_Pemesan || '',
+      '<<NOHP>>': reservation.No_HP || '',
+      '<<INSTAGRAM>>': patient.Instagram || '',
+      '<<TGL>>': !isNaN(visitDate.getTime()) ? visitDate.toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A',
+      '<<KELUHAN>>': reservation.Keluhan || '',
+      '<<TREATMENT>>': JSON.parse(reservation.Items || '[]').join(', '),
+      '<<RME>>': patient.RME || '',
+      '<<TIMESTAMP>>': new Date(reservation.Timestamp).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' }) + ' WIB'
+    };
+
+    for (const placeholder in replacements) {
+      slide.replaceAllText(placeholder, replacements[placeholder]);
+    }
+
+    presentation.saveAndClose();
+    
+    const pdfBlob = copyFile.getAs('application/pdf');
+    const base64Pdf = Utilities.base64Encode(pdfBlob.getBytes());
+    const fileName = `StatusReservasi-${patient.Nama_Pasien.replace(/ /g, '_')}-${patient.RME}.pdf`;
+
+    copyFile.setTrashed(true); // Menghapus file salinan sementara
+
+    return { status: 'success', data: { base64: base64Pdf, fileName: fileName } };
+  } catch (error) {
+    logError('generatePatientStatusPdf', error);
+    return { status: 'error', message: 'Gagal membuat PDF: ' + error.message };
+  }
+}
 
 /**
  * Mengambil riwayat reservasi untuk seorang pasien berdasarkan RME.
