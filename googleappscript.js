@@ -24,7 +24,7 @@ const LOG_SHEET_NAME = 'Log'; // Sheet untuk mencatat error
 
 // !!! PENTING: Ganti ID di bawah ini dengan ID file Google Slide template Anda !!!
 // Petunjuk: Buka file Google Slide, salin ID dari URL. Contoh: .../d/INI_ADALAH_ID_NYA/edit
-const TEMPLATE_ID = '1a9EMmne_y3pDUu5yoq7a9L0zVcgV2h-pfoyGRbooWak';
+const TEMPLATE_ID = '1a9EMmne_y3pDUu5yoq7a9L0zVcgV2h-pfoyGRbooWak'; // Sesuaikan dengan ID template baru jika berbeda
 
 // --- 2. FUNGSI UTAMA WEB APP (ENTRY POINT) ---
 
@@ -99,7 +99,7 @@ function doPost(e) {
 // Fungsi-fungsi ini berisi logika utama dari aplikasi.
 
 /**
- * **[FUNGSI BARU]**
+ * **[FUNGSI YANG DIPERBARUI]**
  * Membuat PDF status pasien berdasarkan template Google Slide.
  * @param {object} payload - Objek yang berisi `reservationId`.
  * @returns {object} - Objek status berisi data PDF dalam format base64.
@@ -129,6 +129,20 @@ function generatePatientStatusPdf(payload) {
     const dob = new Date(patient.Tanggal_Lahir);
     const visitDate = new Date(reservation.Tanggal_Datang);
 
+    // ************* PENAMBAHAN: Parsing data pemeriksaan *************
+    // Ambil data pemeriksaan dari kolom 'Data_Pemeriksaan' di sheet Reservasi
+    let examData = {};
+    try {
+        // Data disimpan sebagai string JSON, jadi kita perlu parse
+        if(reservation.Data_Pemeriksaan) {
+            examData = JSON.parse(reservation.Data_Pemeriksaan);
+        }
+    } catch(e) {
+        logError('generatePdf.parseExamData', e);
+        // Jika gagal parse, examData akan tetap objek kosong, tidak menyebabkan error
+    }
+    // ***************************************************************
+
     let ageString = 'Tanggal lahir invalid';
     if (!isNaN(dob.getTime())) {
       let years = visitDate.getFullYear() - dob.getFullYear();
@@ -138,7 +152,8 @@ function generatePatientStatusPdf(payload) {
       if (months < 0) { years--; months += 12; }
       ageString = `${years} thn, ${months} bln, ${days} hr`;
     }
-
+    
+    // ************* PENYESUAIAN: Penambahan placeholder baru *************
     const replacements = {
       '<<NAMABAYI>>': patient.Nama_Pasien || '',
       '<<TTL>>': !isNaN(dob.getTime()) ? dob.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 'N/A',
@@ -152,8 +167,16 @@ function generatePatientStatusPdf(payload) {
       '<<KELUHAN>>': reservation.Keluhan || '',
       '<<TREATMENT>>': JSON.parse(reservation.Items || '[]').join(', '),
       '<<RME>>': patient.RME || '',
-      '<<TIMESTAMP>>': new Date(reservation.Timestamp).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' }) + ' WIB'
+      '<<TIMESTAMP>>': new Date(reservation.Timestamp).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' }) + ' WIB',
+      
+      // Placeholder baru dari template_baru.pptx
+      '<<suhu>>': examData.suhu ? `${examData.suhu} °C` : 'N/A',
+      '<<berat_badan>>': examData.berat ? `${examData.berat} kg` : 'N/A',
+      '<<tinggi_badan>>': examData.tinggi ? `${examData.tinggi} cm` : 'N/A',
+      '<<lila>>': examData.lila ? `${examData.lila} cm` : 'N/A',
+      '<<TERAPIS>>': reservation.Terapis || 'N/A'
     };
+    // *******************************************************************
 
     for (const placeholder in replacements) {
       slide.replaceAllText(placeholder, replacements[placeholder]);
