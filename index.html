@@ -296,10 +296,12 @@
 
     <!-- Tombol FAB (Floating Action Button) untuk menampilkan form reservasi -->
     <div id="booking-cart-fab" class="fixed bottom-24 right-5 z-20 hidden">
-      <button onclick="showReservationForm()" class="bg-theme-pink text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center transition-transform hover:scale-110">
+      <button onclick="showReservationForm()"
+        class="bg-theme-pink text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center transition-transform hover:scale-110">
         <i class="fas fa-calendar-check text-2xl"></i>
         <!-- Badge untuk menunjukkan jumlah item yang dipilih -->
-        <span id="cart-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-xs rounded-full px-2 py-1">0</span>
+        <span id="cart-count"
+          class="absolute -top-1 -right-1 bg-pink-600 text-white text-xs rounded-full px-2 py-1">0</span>
       </button>
     </div>
 
@@ -598,10 +600,10 @@
       const sortedReservations = reservations.sort((a, b) => new Date(b.Tanggal_Datang) - new Date(a.Tanggal_Datang));
       // Buat HTML untuk setiap kartu reservasi menggunakan .map() dan gabungkan dengan .join().
       appContent.innerHTML = `<div class="space-y-4">${sortedReservations.map(res => {
-                const visitDate = new Date(res.Tanggal_Datang);
-                // Format tanggal agar mudah dibaca.
-                const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID',{dateStyle:'medium', timeStyle:'short'}) : 'Tanggal Invalid';
-                return `<div class="p-4 rounded-lg shadow bg-card">
+        const visitDate = new Date(res.Tanggal_Datang);
+        // Format tanggal agar mudah dibaca.
+        const displayDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) : 'Tanggal Invalid';
+        return `<div class="p-4 rounded-lg shadow bg-card">
                         <div class="flex justify-between items-start">
                             <div><p class="font-bold">${res.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${res.RME})</span></p><p class="text-sm text-secondary">${JSON.parse(res.Items || '[]').join(', ')}</p></div>
                             <span class="text-xs font-semibold px-2 py-1 rounded-full border ${statusStyles[res.Status] || 'text-gray-500'}">${res.Status}</span>
@@ -611,9 +613,9 @@
                             <button onclick="handlePrintReservation('${res.ID_Reservasi}')" class="text-gray-500 hover:text-pink-500 text-sm font-medium flex items-center gap-1"><i class="fas fa-print fa-fw"></i>Cetak</button>
                             <button onclick="showPatientHistoryModal('${res.RME}')" class="text-purple-500 hover:underline text-sm font-medium">Riwayat</button>
                             <button onclick="showReservationDetailsModal('${res.ID_Reservasi}')" class="text-blue-500 hover:underline text-sm font-medium">Detail</button>
-                            ${res.Status !== 'Selesai' ? `<button onclick="requestCompleteAction('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button>`: ''}
+                            ${res.Status !== 'Selesai' ? `<button onclick="requestCompleteAction('${res.ID_Reservasi}')" class="bg-green-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-green-600">Selesaikan</button>` : ''}
                         </div></div>`;
-            }).join('')}</div>`;
+      }).join('')}</div>`;
     }
 
     /**
@@ -733,14 +735,14 @@
         }
       }
     };
-    
+
     /**
      * Menampilkan modal konfirmasi jika ditemukan pasien yang mungkin sama.
      * @param {Array<object>} matches - Array objek pasien yang cocok.
      * @param {object} originalFormData - Data dari form reservasi awal.
      */
     function showDuplicatePatientModal(matches, originalFormData) {
-        const matchesHtml = matches.map((p, index) => `
+      const matchesHtml = matches.map((p, index) => `
             <label for="match-${index}" class="block p-3 border-b border-primary last:border-b-0 hover:bg-pink-50 dark:hover:bg-gray-700 cursor-pointer">
                 <input type="radio" id="match-${index}" name="selectedPatient" value="${p.RME}" class="mr-3">
                 <span class="font-semibold">${p.Nama_Pasien}</span> <span class="text-sm text-secondary">(${p.RME})</span>
@@ -748,7 +750,7 @@
             </label>
         `).join('');
 
-        const modalHtml = `
+      const modalHtml = `
         <div id="duplicate-patient-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
             <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card">
                 <div class="p-6">
@@ -762,33 +764,33 @@
                 </div>
             </div>
         </div>`;
-        document.getElementById('modals-container').innerHTML = modalHtml;
+      document.getElementById('modals-container').innerHTML = modalHtml;
 
-        document.getElementById('btn-its-me').addEventListener('click', async () => {
-            const selectedRME = document.querySelector('input[name="selectedPatient"]:checked');
-            if (!selectedRME) {
-                showToast('Silakan pilih salah satu data pasien.', 'warning');
-                return;
-            }
-            originalFormData.existingRME = selectedRME.value;
-            const result = await callBackend('POST', 'newReservation', originalFormData);
-             if (result.status === 'success') {
-                closeModal('reservation-modal');
-                closeModal('duplicate-patient-modal');
-                showToast(`Reservasi untuk pasien lama berhasil!`, 'success');
-                state.selectedItems = []; updateCartFab(); navigateTo('reservations');
-            } else { showToast(`Gagal: ${result.message}`, 'error'); }
-        });
+      document.getElementById('btn-its-me').addEventListener('click', async () => {
+        const selectedRME = document.querySelector('input[name="selectedPatient"]:checked');
+        if (!selectedRME) {
+          showToast('Silakan pilih salah satu data pasien.', 'warning');
+          return;
+        }
+        originalFormData.existingRME = selectedRME.value;
+        const result = await callBackend('POST', 'newReservation', originalFormData);
+        if (result.status === 'success') {
+          closeModal('reservation-modal');
+          closeModal('duplicate-patient-modal');
+          showToast(`Reservasi untuk pasien lama berhasil!`, 'success');
+          state.selectedItems = []; updateCartFab(); navigateTo('reservations');
+        } else { showToast(`Gagal: ${result.message}`, 'error'); }
+      });
 
-        document.getElementById('btn-not-me').addEventListener('click', async () => {
-            const result = await callBackend('POST', 'newReservation', originalFormData);
-            if (result.status === 'success') {
-                closeModal('reservation-modal');
-                closeModal('duplicate-patient-modal');
-                showToast(`Reservasi untuk pasien baru berhasil! RME: ${result.data.rme}`, 'success');
-                state.selectedItems = []; updateCartFab(); navigateTo('reservations');
-            } else { showToast(`Gagal: ${result.message}`, 'error'); }
-        });
+      document.getElementById('btn-not-me').addEventListener('click', async () => {
+        const result = await callBackend('POST', 'newReservation', originalFormData);
+        if (result.status === 'success') {
+          closeModal('reservation-modal');
+          closeModal('duplicate-patient-modal');
+          showToast(`Reservasi untuk pasien baru berhasil! RME: ${result.data.rme}`, 'success');
+          state.selectedItems = []; updateCartFab(); navigateTo('reservations');
+        } else { showToast(`Gagal: ${result.message}`, 'error'); }
+      });
     }
 
     /**
@@ -835,181 +837,181 @@
         showToast(`Gagal: ${result.message}`, 'error');
       }
     };
-    
+
     // --- SEMUA FUNGSI LAINNYA ---
     /**
  * =========================================
  * GLOBAL STATE AND UTILITIES
  * =========================================
  */
-// Asumsi 'state', 'callBackend', 'navigateTo', 'showCompleteModal' adalah fungsi/variabel global yang didefinisikan di tempat lain.
-// Asumsi library 'Chart', 'html2canvas', 'jspdf' dimuat secara global.
+    // Asumsi 'state', 'callBackend', 'navigateTo', 'showCompleteModal' adalah fungsi/variabel global yang didefinisikan di tempat lain.
+    // Asumsi library 'Chart', 'html2canvas', 'jspdf' dimuat secara global.
 
-// Utility function to toggle active navigation tabs
-window.updateActiveNavTab = (tabName) => {
-    document.querySelectorAll('.nav-tab').forEach(tab => {
+    // Utility function to toggle active navigation tabs
+    window.updateActiveNavTab = (tabName) => {
+      document.querySelectorAll('.nav-tab').forEach(tab => {
         const isActive = tab.dataset.tab === tabName;
         tab.classList.toggle('active-tab', isActive);
         tab.classList.toggle('tab', !isActive);
-    });
-};
+      });
+    };
 
-// Global function to close any modal
-window.closeModal = (modalId) => {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.remove();
-};
+    // Global function to close any modal
+    window.closeModal = (modalId) => {
+      const modal = document.getElementById(modalId);
+      if (modal) modal.remove();
+    };
 
-// Global function to show a temporary toast notification
-const showToast = (message, type = 'info') => {
-    const toast = document.createElement('div');
-    const colors = {
+    // Global function to show a temporary toast notification
+    const showToast = (message, type = 'info') => {
+      const toast = document.createElement('div');
+      const colors = {
         'success': 'bg-green-500',
         'error': 'bg-red-500',
         'warning': 'bg-yellow-500',
         'info': 'bg-blue-500'
-    };
-    toast.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-[101] transition-transform transform translate-x-full`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.classList.remove('translate-x-full'), 100);
-    setTimeout(() => {
+      };
+      toast.className = `fixed top-5 right-5 ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg z-[101] transition-transform transform translate-x-full`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.classList.remove('translate-x-full'), 100);
+      setTimeout(() => {
         toast.classList.add('translate-x-full');
         setTimeout(() => toast.remove(), 3500);
-    }, 3500);
-};
+      }, 3500);
+    };
 
-// Global function to show/hide loading spinner
-const setLoading = (isLoading) => {
-    const loader = document.getElementById('global-loader');
-    if (loader) loader.style.display = isLoading ? 'flex' : 'none';
-};
+    // Global function to show/hide loading spinner
+    const setLoading = (isLoading) => {
+      const loader = document.getElementById('global-loader');
+      if (loader) loader.style.display = isLoading ? 'flex' : 'none';
+    };
 
-/**
- * =========================================
- * THEME TOGGLE
- * =========================================
- */
-const updateThemeIcon = (theme) => {
-    const icon = document.getElementById('theme-toggle-icon');
-    if (icon) {
+    /**
+     * =========================================
+     * THEME TOGGLE
+     * =========================================
+     */
+    const updateThemeIcon = (theme) => {
+      const icon = document.getElementById('theme-toggle-icon');
+      if (icon) {
         icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    }
-};
+      }
+    };
 
-const applyInitialTheme = () => {
-    const theme = localStorage.getItem('theme') || 'light';
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-    updateThemeIcon(theme);
-};
+    const applyInitialTheme = () => {
+      const theme = localStorage.getItem('theme') || 'light';
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      updateThemeIcon(theme);
+    };
 
-const toggleTheme = () => {
-    const isDark = document.documentElement.classList.toggle('dark');
-    const theme = isDark ? 'dark' : 'light';
-    localStorage.setItem('theme', theme);
-    updateThemeIcon(theme);
-    // Re-render charts on theme change for color update
-    if (state.activeTab === 'rekap' && state.rekapData) {
+    const toggleTheme = () => {
+      const isDark = document.documentElement.classList.toggle('dark');
+      const theme = isDark ? 'dark' : 'light';
+      localStorage.setItem('theme', theme);
+      updateThemeIcon(theme);
+      // Re-render charts on theme change for color update
+      if (state.activeTab === 'rekap' && state.rekapData) {
         renderAllRekapVisuals(state.rekapFilteredData || state.rekapData);
-    }
-};
+      }
+    };
 
 
-/**
- * =========================================
- * SEARCH INPUT AND HANDLERS
- * =========================================
- */
-function setupSearchInput(tabName) {
-    const container = document.getElementById('search-container');
-    let placeholder = '', handler;
+    /**
+     * =========================================
+     * SEARCH INPUT AND HANDLERS
+     * =========================================
+     */
+    function setupSearchInput(tabName) {
+      const container = document.getElementById('search-container');
+      let placeholder = '', handler;
 
-    switch (tabName) {
+      switch (tabName) {
         case 'home':
-            placeholder = 'Cari treatment/produk...';
-            handler = handleHomeSearch;
-            break;
+          placeholder = 'Cari treatment/produk...';
+          handler = handleHomeSearch;
+          break;
         case 'reservations':
-            placeholder = 'Cari reservasi (nama, RME)...';
-            handler = handleReservationsSearch;
-            break;
+          placeholder = 'Cari reservasi (nama, RME)...';
+          handler = handleReservationsSearch;
+          break;
         case 'pasien':
-            placeholder = 'Cari pasien (nama, RME)...';
-            handler = handlePatientsSearch;
-            break;
+          placeholder = 'Cari pasien (nama, RME)...';
+          handler = handlePatientsSearch;
+          break;
         default:
-            return;
+          return;
+      }
+
+      container.innerHTML = `<input type="search" id="dynamic-search-input" placeholder="${placeholder}" class="w-full p-3 pl-10 border rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 input-field"><i class="fas fa-search absolute left-4 top-3.5 text-secondary"></i>`;
+      document.getElementById('dynamic-search-input').addEventListener('input', handler);
     }
 
-    container.innerHTML = `<input type="search" id="dynamic-search-input" placeholder="${placeholder}" class="w-full p-3 pl-10 border rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300 input-field"><i class="fas fa-search absolute left-4 top-3.5 text-secondary"></i>`;
-    document.getElementById('dynamic-search-input').addEventListener('input', handler);
-}
+    function handleHomeSearch(e) {
+      const query = e.target.value.toLowerCase();
+      const filteredTreatments = state.data.treatments.filter(t => t.Nama.toLowerCase().includes(query));
+      const filteredProducts = state.data.products.filter(p => p.Nama.toLowerCase().includes(query));
 
-function handleHomeSearch(e) {
-    const query = e.target.value.toLowerCase();
-    const filteredTreatments = state.data.treatments.filter(t => t.Nama.toLowerCase().includes(query));
-    const filteredProducts = state.data.products.filter(p => p.Nama.toLowerCase().includes(query));
-
-    if (state.activeHomeTab === 'treatments') {
+      if (state.activeHomeTab === 'treatments') {
         renderTreatments(filteredTreatments);
-    } else {
+      } else {
         renderProducts(filteredProducts);
+      }
     }
-}
 
-function handleReservationsSearch(e) {
-    const query = e.target.value.toLowerCase();
-    const filtered = state.data.allReservations.filter(res =>
+    function handleReservationsSearch(e) {
+      const query = e.target.value.toLowerCase();
+      const filtered = state.data.allReservations.filter(res =>
         res.Nama_Pasien.toLowerCase().includes(query) || res.RME.toLowerCase().includes(query)
-    );
-    // Asumsi renderReservationsPage adalah fungsi global untuk merender ulang halaman reservasi
-    renderReservationsPage(filtered);
-}
+      );
+      // Asumsi renderReservationsPage adalah fungsi global untuk merender ulang halaman reservasi
+      renderReservationsPage(filtered);
+    }
 
-function handlePatientsSearch(e) {
-    const query = e.target.value.toLowerCase();
-    const filtered = state.data.allPatients.filter(p =>
+    function handlePatientsSearch(e) {
+      const query = e.target.value.toLowerCase();
+      const filtered = state.data.allPatients.filter(p =>
         p.Nama_Pasien.toLowerCase().includes(query) || p.RME.toLowerCase().includes(query)
-    );
-    renderPatientsManagementPage(filtered);
-}
+      );
+      renderPatientsManagementPage(filtered);
+    }
 
-/**
- * =========================================
- * HOME PAGE (TREATMENTS/PRODUCTS) RENDER & LOGIC
- * =========================================
- */
-function renderHomePage() {
-    return `<div class="flex border-b-2 border-primary mb-4"><button data-tab="treatments" class="home-tab active-tab flex-1 p-3 text-center text-secondary">Treatments</button><button data-tab="products" class="home-tab tab flex-1 p-3 text-center text-secondary">Produk</button></div><div id="home-content"></div>`;
-}
+    /**
+     * =========================================
+     * HOME PAGE (TREATMENTS/PRODUCTS) RENDER & LOGIC
+     * =========================================
+     */
+    function renderHomePage() {
+      return `<div class="flex border-b-2 border-primary mb-4"><button data-tab="treatments" class="home-tab active-tab flex-1 p-3 text-center text-secondary">Treatments</button><button data-tab="products" class="home-tab tab flex-1 p-3 text-center text-secondary">Produk</button></div><div id="home-content"></div>`;
+    }
 
-function setupHomeEventListeners() {
-    document.querySelectorAll('.home-tab').forEach(tab => {
+    function setupHomeEventListeners() {
+      document.querySelectorAll('.home-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            state.activeHomeTab = tab.dataset.tab;
-            document.querySelectorAll('.home-tab').forEach(t => {
-                t.classList.remove('active-tab');
-                t.classList.add('tab');
-            });
-            tab.classList.add('active-tab');
-            tab.classList.remove('tab');
+          state.activeHomeTab = tab.dataset.tab;
+          document.querySelectorAll('.home-tab').forEach(t => {
+            t.classList.remove('active-tab');
+            t.classList.add('tab');
+          });
+          tab.classList.add('active-tab');
+          tab.classList.remove('tab');
 
-            if (state.activeHomeTab === 'treatments') {
-                renderTreatments(state.data.treatments);
-            } else {
-                renderProducts(state.data.products);
-            }
+          if (state.activeHomeTab === 'treatments') {
+            renderTreatments(state.data.treatments);
+          } else {
+            renderProducts(state.data.products);
+          }
         });
-    });
-}
+      });
+    }
 
-function renderTreatments(treatmentsToRender) {
-    const categories = ['All', ...new Set(state.data.treatments.map(t => t.Kategori))];
-    const filterHtml = `<div class="mb-4 overflow-x-auto whitespace-nowrap pb-2">${categories.map(cat =>
+    function renderTreatments(treatmentsToRender) {
+      const categories = ['All', ...new Set(state.data.treatments.map(t => t.Kategori))];
+      const filterHtml = `<div class="mb-4 overflow-x-auto whitespace-nowrap pb-2">${categories.map(cat =>
         `<button data-category="${cat}" class="category-filter inline-block px-4 py-2 mr-2 rounded-full shadow-sm text-sm ${state.treatmentFilter === cat ? 'bg-theme-pink text-white' : 'bg-card text-primary'}">${cat}</button>`
-    ).join('')}</div>`;
+      ).join('')}</div>`;
 
-    const itemsHtml = `<div class="grid grid-cols-1 gap-4">${(Array.isArray(treatmentsToRender) ? treatmentsToRender : []).map(item => {
+      const itemsHtml = `<div class="grid grid-cols-1 gap-4">${(Array.isArray(treatmentsToRender) ? treatmentsToRender : []).map(item => {
         const isSelected = state.selectedItems.some(i => i.id === item.ID_Treatment);
         return `<div data-id="${item.ID_Treatment}" data-type="treatment" class="item-card rounded-lg shadow overflow-hidden flex cursor-pointer bg-card ${isSelected ? 'ring-2 ring-pink-500' : ''}">
                     <img src="https://placehold.co/300x200/FFC0CB/FF6B8A?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover">
@@ -1018,14 +1020,14 @@ function renderTreatments(treatmentsToRender) {
                         <p class="text-sm text-secondary">${item.Deskripsi}</p>
                     </div>
                 </div>`;
-    }).join('') || `<p class="text-center text-secondary py-8">Tidak ada treatment.</p>`}</div>`;
+      }).join('') || `<p class="text-center text-secondary py-8">Tidak ada treatment.</p>`}</div>`;
 
-    document.getElementById('home-content').innerHTML = filterHtml + itemsHtml;
-    setupItemSelection();
-}
+      document.getElementById('home-content').innerHTML = filterHtml + itemsHtml;
+      setupItemSelection();
+    }
 
-function renderProducts(productsToRender) {
-    const itemsHtml = `<div class="grid grid-cols-1 gap-4">${(Array.isArray(productsToRender) ? productsToRender : []).map(item => {
+    function renderProducts(productsToRender) {
+      const itemsHtml = `<div class="grid grid-cols-1 gap-4">${(Array.isArray(productsToRender) ? productsToRender : []).map(item => {
         const isSelected = state.selectedItems.some(i => i.id === item.ID_Produk);
         return `<div data-id="${item.ID_Produk}" data-type="product" class="item-card rounded-lg shadow overflow-hidden flex cursor-pointer bg-card ${isSelected ? 'ring-2 ring-pink-500' : ''}">
                     <img src="https://placehold.co/300x200/FFFACD/FFD700?text=${encodeURIComponent(item.Nama)}" alt="${item.Nama}" class="w-1/3 h-auto object-cover">
@@ -1034,65 +1036,65 @@ function renderProducts(productsToRender) {
                         <p class="text-sm text-secondary">${item.Deskripsi}</p>
                     </div>
                 </div>`;
-    }).join('') || `<p class="text-center text-secondary py-8">Tidak ada produk.</p>`}</div>`;
+      }).join('') || `<p class="text-center text-secondary py-8">Tidak ada produk.</p>`}</div>`;
 
-    document.getElementById('home-content').innerHTML = itemsHtml;
-    setupItemSelection();
-}
+      document.getElementById('home-content').innerHTML = itemsHtml;
+      setupItemSelection();
+    }
 
-function setupItemSelection() {
-    // Category filter listener
-    document.querySelectorAll('.category-filter').forEach(btn => btn.addEventListener('click', (e) => {
+    function setupItemSelection() {
+      // Category filter listener
+      document.querySelectorAll('.category-filter').forEach(btn => btn.addEventListener('click', (e) => {
         state.treatmentFilter = e.target.dataset.category;
         const filtered = state.treatmentFilter === 'All' ? state.data.treatments : state.data.treatments.filter(t => t.Kategori === state.treatmentFilter);
         renderTreatments(filtered);
-    }));
+      }));
 
-    // Item card click listener for selection
-    document.querySelectorAll('.item-card').forEach(card => card.addEventListener('click', () => {
+      // Item card click listener for selection
+      document.querySelectorAll('.item-card').forEach(card => card.addEventListener('click', () => {
         const itemId = card.dataset.id;
         const itemIndex = state.selectedItems.findIndex(i => i.id === itemId);
 
         if (itemIndex > -1) {
-            // Deselect
-            state.selectedItems.splice(itemIndex, 1);
-            card.classList.remove('ring-2', 'ring-pink-500');
+          // Deselect
+          state.selectedItems.splice(itemIndex, 1);
+          card.classList.remove('ring-2', 'ring-pink-500');
         } else {
-            // Select
-            const type = card.dataset.type;
-            const source = type === 'treatment' ? state.data.treatments : state.data.products;
-            const idField = type === 'treatment' ? 'ID_Treatment' : 'ID_Produk';
-            const itemData = source.find(i => i[idField] === itemId);
+          // Select
+          const type = card.dataset.type;
+          const source = type === 'treatment' ? state.data.treatments : state.data.products;
+          const idField = type === 'treatment' ? 'ID_Treatment' : 'ID_Produk';
+          const itemData = source.find(i => i[idField] === itemId);
 
-            if (itemData) {
-                state.selectedItems.push({
-                    id: itemId,
-                    name: itemData.Nama,
-                    category: itemData.Kategori || null
-                });
-                card.classList.add('ring-2', 'ring-pink-500');
-            }
+          if (itemData) {
+            state.selectedItems.push({
+              id: itemId,
+              name: itemData.Nama,
+              category: itemData.Kategori || null
+            });
+            card.classList.add('ring-2', 'ring-pink-500');
+          }
         }
         updateCartFab();
-    }));
-}
+      }));
+    }
 
-function updateCartFab() {
-    const fab = document.getElementById('booking-cart-fab');
-    const count = document.getElementById('cart-count');
-    fab.classList.toggle('hidden', state.selectedItems.length === 0 || !['home'].includes(state.activeTab));
-    count.textContent = state.selectedItems.length;
-}
+    function updateCartFab() {
+      const fab = document.getElementById('booking-cart-fab');
+      const count = document.getElementById('cart-count');
+      fab.classList.toggle('hidden', state.selectedItems.length === 0 || !['home'].includes(state.activeTab));
+      count.textContent = state.selectedItems.length;
+    }
 
 
-/**
- * =========================================
- * AUTHENTICATION (PASSWORD) MODAL
- * =========================================
- */
-window.showPasswordModal = (targetTab = null) => {
-    const cancelAction = targetTab ? "navigateTo('home')" : "closeModal('password-modal')";
-    const modalHtml = `
+    /**
+     * =========================================
+     * AUTHENTICATION (PASSWORD) MODAL
+     * =========================================
+     */
+    window.showPasswordModal = (targetTab = null) => {
+      const cancelAction = targetTab ? "navigateTo('home')" : "closeModal('password-modal')";
+      const modalHtml = `
         <div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
             <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card">
                 <form id="password-form" class="p-8 space-y-4">
@@ -1107,49 +1109,49 @@ window.showPasswordModal = (targetTab = null) => {
             </div>
         </div>
     `;
-    document.getElementById('modals-container').innerHTML = modalHtml;
-    document.getElementById('password-form').addEventListener('submit', (e) => handlePasswordSubmit(e, targetTab));
-    document.getElementById('password-input').focus();
-};
+      document.getElementById('modals-container').innerHTML = modalHtml;
+      document.getElementById('password-form').addEventListener('submit', (e) => handlePasswordSubmit(e, targetTab));
+      document.getElementById('password-input').focus();
+    };
 
-const handlePasswordSubmit = (e, targetTab = null) => {
-    e.preventDefault();
-    const passwordInput = document.getElementById('password-input');
-    // Hardcoded password for example
-    if (passwordInput.value === '112211') {
+    const handlePasswordSubmit = (e, targetTab = null) => {
+      e.preventDefault();
+      const passwordInput = document.getElementById('password-input');
+      // Hardcoded password for example
+      if (passwordInput.value === '112211') {
         showToast('Akses diberikan!', 'success');
         state.isAuthenticated = true;
         closeModal('password-modal');
         if (targetTab) {
-            navigateTo(targetTab);
+          navigateTo(targetTab);
         } else if (typeof state.pendingAction === 'function') {
-            state.pendingAction();
-            state.pendingAction = null;
+          state.pendingAction();
+          state.pendingAction = null;
         }
-    } else {
+      } else {
         showToast('Sandi salah.', 'error');
         passwordInput.value = '';
         passwordInput.focus();
-    }
-};
+      }
+    };
 
-window.requestCompleteAction = (reservationId) => {
-    if (state.isAuthenticated) {
+    window.requestCompleteAction = (reservationId) => {
+      if (state.isAuthenticated) {
         showCompleteModal(reservationId);
-    } else {
+      } else {
         state.pendingAction = () => showCompleteModal(reservationId);
         showPasswordModal();
-    }
-};
+      }
+    };
 
-/**
- * =========================================
- * RESERVATION FORM MODAL
- * =========================================
- */
-window.showReservationForm = () => {
-    const items = state.selectedItems.map(item => item.name).join('\n');
-    const modalHtml = `
+    /**
+     * =========================================
+     * RESERVATION FORM MODAL
+     * =========================================
+     */
+    window.showReservationForm = () => {
+      const items = state.selectedItems.map(item => item.name).join('\n');
+      const modalHtml = `
         <div id="reservation-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
             <div class="rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto bg-card">
                 <form id="reservation-form" class="p-6 space-y-4">
@@ -1187,118 +1189,118 @@ window.showReservationForm = () => {
             </div>
         </div>
     `;
-    document.getElementById('modals-container').innerHTML = modalHtml;
-    setupReservationFormListeners();
-};
+      document.getElementById('modals-container').innerHTML = modalHtml;
+      setupReservationFormListeners();
+    };
 
-function setupReservationFormListeners() {
-    populateTimeOptions();
-    document.getElementById('dob-input').addEventListener('change', updateAgeAndDay);
-    // Asumsi handleReservationSubmit adalah fungsi global
-    document.getElementById('reservation-form').addEventListener('submit', handleReservationSubmit);
-    document.getElementById('search-old-patient-input').addEventListener('input', handleSearchForOldPatient);
-    document.getElementById('search-results-pasien-lama-modal').addEventListener('click', (e) => {
+    function setupReservationFormListeners() {
+      populateTimeOptions();
+      document.getElementById('dob-input').addEventListener('change', updateAgeAndDay);
+      // Asumsi handleReservationSubmit adalah fungsi global
+      document.getElementById('reservation-form').addEventListener('submit', handleReservationSubmit);
+      document.getElementById('search-old-patient-input').addEventListener('input', handleSearchForOldPatient);
+      document.getElementById('search-results-pasien-lama-modal').addEventListener('click', (e) => {
         const target = e.target.closest('.search-result-item');
         if (target && target.dataset.index) {
-            window.selectPatientAndFillForm(target.dataset.index);
+          window.selectPatientAndFillForm(target.dataset.index);
         }
-    });
-}
+      });
+    }
 
-const populateTimeOptions = () => {
-    const timeSelect = document.querySelector('select[name="visitTime"]');
-    if (!timeSelect) return;
+    const populateTimeOptions = () => {
+      const timeSelect = document.querySelector('select[name="visitTime"]');
+      if (!timeSelect) return;
 
-    const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
-    timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
-    if (isPartus) return;
+      const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
+      timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
+      if (isPartus) return;
 
-    let startTime = new Date();
-    startTime.setHours(8, 0, 0, 0);
-    let endTime = new Date();
-    endTime.setHours(21, 30, 0, 0);
+      let startTime = new Date();
+      startTime.setHours(8, 0, 0, 0);
+      let endTime = new Date();
+      endTime.setHours(21, 30, 0, 0);
 
-    while (startTime <= endTime) {
+      while (startTime <= endTime) {
         const timeString = startTime.toLocaleTimeString('id-ID', {
-            hour: '2-digit',
-            minute: '2-digit'
+          hour: '2-digit',
+          minute: '2-digit'
         }).replace(/\./g, ':');
         timeSelect.appendChild(new Option(timeString, timeString));
         startTime.setMinutes(startTime.getMinutes() + 30);
-    }
-};
+      }
+    };
 
-const updateAgeAndDay = (e) => {
-    const dobInput = e.target.value;
-    const ageOutput = document.getElementById('age-output');
+    const updateAgeAndDay = (e) => {
+      const dobInput = e.target.value;
+      const ageOutput = document.getElementById('age-output');
 
-    if (!dobInput) {
+      if (!dobInput) {
         ageOutput.value = '';
         return;
-    }
+      }
 
-    const dob = new Date(dobInput);
-    const now = new Date();
+      const dob = new Date(dobInput);
+      const now = new Date();
 
-    if (isNaN(dob.getTime()) || dob > now) {
+      if (isNaN(dob.getTime()) || dob > now) {
         ageOutput.value = 'Tgl lahir invalid';
         return;
-    }
+      }
 
-    let years = now.getFullYear() - dob.getFullYear();
-    let months = now.getMonth() - dob.getMonth();
-    let days = now.getDate() - dob.getDate();
+      let years = now.getFullYear() - dob.getFullYear();
+      let months = now.getMonth() - dob.getMonth();
+      let days = now.getDate() - dob.getDate();
 
-    if (days < 0) {
+      if (days < 0) {
         months--;
         days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
-    }
-    if (months < 0) {
+      }
+      if (months < 0) {
         years--;
         months += 12;
-    }
+      }
 
-    ageOutput.value = `${years} thn, ${months} bln, ${days} hr`;
-};
+      ageOutput.value = `${years} thn, ${months} bln, ${days} hr`;
+    };
 
-// Pasien Lama Search Logic
-async function handleSearchForOldPatient(e) {
-    const query = e.target.value.toLowerCase();
-    const resultsContainer = document.getElementById('search-results-pasien-lama-modal');
-    if (!resultsContainer) return;
+    // Pasien Lama Search Logic
+    async function handleSearchForOldPatient(e) {
+      const query = e.target.value.toLowerCase();
+      const resultsContainer = document.getElementById('search-results-pasien-lama-modal');
+      if (!resultsContainer) return;
 
-    if (query.length < 2) {
+      if (query.length < 2) {
         resultsContainer.classList.add('hidden');
         return;
-    }
+      }
 
-    const result = await callBackend('GET', 'getPatients', {
+      const result = await callBackend('GET', 'getPatients', {
         query: query
-    });
-    resultsContainer.innerHTML = '';
+      });
+      resultsContainer.innerHTML = '';
 
-    if (result.status === 'success' && result.data.length > 0) {
+      if (result.status === 'success' && result.data.length > 0) {
         state.data.searchResults = result.data;
         result.data.forEach((p, index) => {
-            resultsContainer.innerHTML += `
+          resultsContainer.innerHTML += `
                 <div data-index="${index}" class="p-3 hover:bg-pink-100 dark:hover:bg-gray-700 cursor-pointer border-b border-primary search-result-item">
                     <p class="font-semibold">${p.Nama_Pasien} <span class="text-sm text-secondary">(${p.RME})</span></p>
                     <p class="text-sm text-secondary">${p.Alamat || ''}</p>
                 </div>`;
         });
         resultsContainer.classList.remove('hidden');
-    } else {
+      } else {
         resultsContainer.innerHTML = `<div class="p-3 text-secondary">Tidak ada hasil ditemukan.</div>`;
         resultsContainer.classList.remove('hidden');
+      }
     }
-}
 
-window.selectPatientAndFillForm = (index) => {
-    const patient = state.data.searchResults[index];
-    if (!patient) return;
+    window.selectPatientAndFillForm = (index) => {
+      const patient = state.data.searchResults[index];
+      if (!patient) return;
 
-    const form = document.getElementById('reservation-form');
-    if (form) {
+      const form = document.getElementById('reservation-form');
+      if (form) {
         // Fill form fields
         form.requesterName.value = patient.Nama_Pemesan || patient.Nama_Pasien || '';
         form.phone.value = patient.No_HP || '';
@@ -1308,38 +1310,38 @@ window.selectPatientAndFillForm = (index) => {
         form.gender.value = patient.Jenis_Kelamin || 'Wanita';
 
         if (patient.Tanggal_Lahir) {
-            const dob = new Date(patient.Tanggal_Lahir);
-            if (!isNaN(dob.getTime())) {
-                const dobInput = form.dob;
-                dobInput.value = dob.toISOString().split('T')[0];
-                // Manually trigger change to update age calculation
-                dobInput.dispatchEvent(new Event('change'));
-            }
+          const dob = new Date(patient.Tanggal_Lahir);
+          if (!isNaN(dob.getTime())) {
+            const dobInput = form.dob;
+            dobInput.value = dob.toISOString().split('T')[0];
+            // Manually trigger change to update age calculation
+            dobInput.dispatchEvent(new Event('change'));
+          }
         }
-    }
+      }
 
-    const resultsContainer = document.getElementById('search-results-pasien-lama-modal');
-    if (resultsContainer) resultsContainer.classList.add('hidden');
-    const searchInput = document.getElementById('search-old-patient-input');
-    if (searchInput) searchInput.value = '';
-};
+      const resultsContainer = document.getElementById('search-results-pasien-lama-modal');
+      if (resultsContainer) resultsContainer.classList.add('hidden');
+      const searchInput = document.getElementById('search-old-patient-input');
+      if (searchInput) searchInput.value = '';
+    };
 
 
-/**
- * =========================================
- * PATIENT MANAGEMENT
- * =========================================
- */
-function renderPatientsManagementPage(patients) {
-    const appContent = document.getElementById('app-content');
-    if (!patients || patients.length === 0) {
+    /**
+     * =========================================
+     * PATIENT MANAGEMENT
+     * =========================================
+     */
+    function renderPatientsManagementPage(patients) {
+      const appContent = document.getElementById('app-content');
+      if (!patients || patients.length === 0) {
         appContent.innerHTML = `<div class="text-center p-8 text-secondary"><i class="fas fa-users-slash fa-3x mb-3"></i><p>Tidak ada data pasien.</p></div>`;
         return;
-    }
+      }
 
-    const sortedPatients = patients.sort((a, b) => (b.RME || '').localeCompare(a.RME));
+      const sortedPatients = patients.sort((a, b) => (b.RME || '').localeCompare(a.RME));
 
-    appContent.innerHTML = `<div class="space-y-3">${sortedPatients.map(p =>
+      appContent.innerHTML = `<div class="space-y-3">${sortedPatients.map(p =>
         `<div class="p-4 rounded-lg shadow bg-card flex justify-between items-center">
             <div>
                 <p class="font-bold">${p.Nama_Pasien} <span class="text-sm font-normal text-secondary">(${p.RME})</span></p>
@@ -1350,12 +1352,12 @@ function renderPatientsManagementPage(patients) {
                 <button onclick='window.showUpdatePatientModal(${JSON.stringify(p)})' class="bg-blue-500 text-white px-3 py-1 rounded-md text-sm shadow hover:bg-blue-600">Update</button>
             </div>
         </div>`
-    ).join('')}</div>`;
-}
+      ).join('')}</div>`;
+    }
 
-window.showUpdatePatientModal = (patient) => {
-    const dob = patient.Tanggal_Lahir ? new Date(patient.Tanggal_Lahir).toISOString().split('T')[0] : '';
-    const modalHtml = `
+    window.showUpdatePatientModal = (patient) => {
+      const dob = patient.Tanggal_Lahir ? new Date(patient.Tanggal_Lahir).toISOString().split('T')[0] : '';
+      const modalHtml = `
         <div id="update-patient-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
             <div class="rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto bg-card">
                 <form id="update-patient-form" class="p-6 space-y-4">
@@ -1381,54 +1383,54 @@ window.showUpdatePatientModal = (patient) => {
                 </form>
             </div>
         </div>`;
-    document.getElementById('modals-container').innerHTML = modalHtml;
-    document.getElementById('update-patient-form').addEventListener('submit', handleUpdatePatientSubmit);
-};
+      document.getElementById('modals-container').innerHTML = modalHtml;
+      document.getElementById('update-patient-form').addEventListener('submit', handleUpdatePatientSubmit);
+    };
 
-const handleUpdatePatientSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
+    const handleUpdatePatientSubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
 
-    const result = await callBackend('POST', 'updatePatient', data);
+      const result = await callBackend('POST', 'updatePatient', data);
 
-    if (result.status === 'success') {
+      if (result.status === 'success') {
         closeModal('update-patient-modal');
         showToast('Data pasien diperbarui!', 'success');
         // Clear and re-fetch patient data for fresh view
         state.data.allPatients = [];
         await navigateTo('pasien');
-    } else {
+      } else {
         showToast(`Gagal: ${result.message}`, 'error');
-    }
-};
+      }
+    };
 
-window.showPatientHistoryModal = async (rme) => {
-    setLoading(true);
-    const result = await callBackend('GET', 'getPatientHistory', {
+    window.showPatientHistoryModal = async (rme) => {
+      setLoading(true);
+      const result = await callBackend('GET', 'getPatientHistory', {
         rme
-    });
-    setLoading(false);
+      });
+      setLoading(false);
 
-    if (result.status !== 'success' || !result.data || result.data.length === 0) {
+      if (result.status !== 'success' || !result.data || result.data.length === 0) {
         showToast(result.message || 'Tidak ada riwayat.', 'info');
         return;
-    }
+      }
 
-    const history = result.data;
-    const patientName = history[0].Nama_Pasien;
+      const history = result.data;
+      const patientName = history[0].Nama_Pasien;
 
-    let historyHtml = history.map(visit => {
+      let historyHtml = history.map(visit => {
         const visitDate = new Date(visit.Tanggal_Datang);
         const displayVisitDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', {
-            dateStyle: 'full',
-            timeStyle: 'short'
+          dateStyle: 'full',
+          timeStyle: 'short'
         }) + ' WIB' : 'N/A';
 
         const examData = visit.Data_Pemeriksaan ? JSON.parse(visit.Data_Pemeriksaan) : null;
         let examHtml = 'Tidak ada data';
         if (examData && Object.values(examData).some(v => v)) {
-            examHtml = `
+          examHtml = `
                 <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                     ${examData.suhu ? `<strong>Suhu:</strong> <span>${examData.suhu} °C</span>` : ''}
                     ${examData.berat ? `<strong>Berat:</strong> <span>${examData.berat} kg</span>` : ''}
@@ -1450,9 +1452,9 @@ window.showPatientHistoryModal = async (rme) => {
                         </details>
                     </div>
                 </div>`;
-    }).join('');
+      }).join('');
 
-    const modalHtml = `
+      const modalHtml = `
         <div id="history-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
             <div class="bg-card rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] flex flex-col">
                 <div class="p-6 border-b border-primary">
@@ -1470,20 +1472,20 @@ window.showPatientHistoryModal = async (rme) => {
                 </div>
             </div>
         </div>`;
-    document.getElementById('modals-container').innerHTML = modalHtml;
-};
+      document.getElementById('modals-container').innerHTML = modalHtml;
+    };
 
-/**
- * =========================================
- * ITEM MANAGEMENT (TREATMENT/PRODUCT) MODAL
- * =========================================
- */
-window.showItemFormModal = (item, type) => {
-    const isEdit = item !== null;
-    const title = `${isEdit ? 'Edit' : 'Tambah'} ${type === 'treatment' ? 'Treatment' : 'Produk'}`;
-    const itemCategories = ['Baby Treatment', 'Kid Treatment', 'Mom Treatment', 'Ladies Treatment', 'Ibu Hamil/Nifas Treatment', 'Tindik Treatment', 'Paket Bersalin/Partus', 'USG', 'Homecare Treatment', 'Kelas Senam', 'Umum/Lainnya'];
+    /**
+     * =========================================
+     * ITEM MANAGEMENT (TREATMENT/PRODUCT) MODAL
+     * =========================================
+     */
+    window.showItemFormModal = (item, type) => {
+      const isEdit = item !== null;
+      const title = `${isEdit ? 'Edit' : 'Tambah'} ${type === 'treatment' ? 'Treatment' : 'Produk'}`;
+      const itemCategories = ['Baby Treatment', 'Kid Treatment', 'Mom Treatment', 'Ladies Treatment', 'Ibu Hamil/Nifas Treatment', 'Tindik Treatment', 'Paket Bersalin/Partus', 'USG', 'Homecare Treatment', 'Kelas Senam', 'Umum/Lainnya'];
 
-    const categorySelectHtml = type === 'treatment' ? `
+      const categorySelectHtml = type === 'treatment' ? `
         <div>
             <label class="block text-sm font-medium">Kategori</label>
             <select name="category" class="mt-1 block w-full rounded-md shadow-sm input-field" required>
@@ -1491,7 +1493,7 @@ window.showItemFormModal = (item, type) => {
             </select>
         </div>` : '';
 
-    const modalHtml = `
+      const modalHtml = `
         <div id="item-form-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
             <div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card">
                 <form id="item-form" class="p-6">
@@ -1510,42 +1512,42 @@ window.showItemFormModal = (item, type) => {
                 </form>
             </div>
         </div>`;
-    document.getElementById('modals-container').innerHTML = modalHtml;
-    document.getElementById('item-form').addEventListener('submit', handleItemFormSubmit);
-};
+      document.getElementById('modals-container').innerHTML = modalHtml;
+      document.getElementById('item-form').addEventListener('submit', handleItemFormSubmit);
+    };
 
-const handleItemFormSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
+    const handleItemFormSubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
 
-    const result = await callBackend('POST', 'addOrUpdateItem', data);
+      const result = await callBackend('POST', 'addOrUpdateItem', data);
 
-    if (result.status === 'success') {
+      if (result.status === 'success') {
         closeModal('item-form-modal');
         showToast(result.message, 'success');
         // Force reload data in management page
         state.data.treatments = [];
         state.data.products = [];
         await navigateTo('management');
-    } else {
+      } else {
         showToast(`Gagal: ${result.message}`, 'error');
-    }
-};
+      }
+    };
 
-/**
- * =========================================
- * RESERVATION COMPLETE MODAL HANDLER
- * =========================================
- */
-// Asumsi showCompleteModal() ada di file lain dan memuat form dengan id 'complete-form'
-const handleCompleteSubmit = async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const formData = new FormData(form);
-    const updatedItems = Array.from(form.querySelectorAll('input[name="updatedItems"]:checked')).map(cb => cb.value);
+    /**
+     * =========================================
+     * RESERVATION COMPLETE MODAL HANDLER
+     * =========================================
+     */
+    // Asumsi showCompleteModal() ada di file lain dan memuat form dengan id 'complete-form'
+    const handleCompleteSubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const updatedItems = Array.from(form.querySelectorAll('input[name="updatedItems"]:checked')).map(cb => cb.value);
 
-    const data = {
+      const data = {
         reservationId: formData.get('reservationId'),
         therapist: formData.get('therapist'),
         temp: formData.get('temp'),
@@ -1555,44 +1557,44 @@ const handleCompleteSubmit = async (e) => {
         examNotes: formData.get('examNotes'),
         updatedComplaint: formData.get('updatedComplaint'),
         updatedItems: updatedItems
-    };
+      };
 
-    const result = await callBackend('POST', 'completeReservation', data);
+      const result = await callBackend('POST', 'completeReservation', data);
 
-    if (result.status === 'success') {
+      if (result.status === 'success') {
         closeModal('complete-modal');
         showToast(result.message, 'success');
         // Asumsi navigateTo akan me-refresh data reservasi
         navigateTo('reservations');
-    } else {
+      } else {
         showToast(`Gagal: ${result.message}`, 'error');
-    }
-};
+      }
+    };
 
-/**
- * =========================================
- * RESERVATION DETAIL MODAL
- * =========================================
- */
-window.showReservationDetailsModal = (reservationId) => {
-    const res = state.data.allReservations.find(r => r.ID_Reservasi === reservationId);
-    if (!res) return showToast('Reservasi tidak ditemukan', 'error');
+    /**
+     * =========================================
+     * RESERVATION DETAIL MODAL
+     * =========================================
+     */
+    window.showReservationDetailsModal = (reservationId) => {
+      const res = state.data.allReservations.find(r => r.ID_Reservasi === reservationId);
+      if (!res) return showToast('Reservasi tidak ditemukan', 'error');
 
-    const patient = state.data.allPatients.find(p => p.RME === res.RME);
-    const examData = res.Data_Pemeriksaan ? JSON.parse(res.Data_Pemeriksaan) : null;
-    const dob = patient ? new Date(patient.Tanggal_Lahir) : null;
-    const displayDob = dob && !isNaN(dob.getTime()) ? dob.toLocaleDateString('id-ID', {
+      const patient = state.data.allPatients.find(p => p.RME === res.RME);
+      const examData = res.Data_Pemeriksaan ? JSON.parse(res.Data_Pemeriksaan) : null;
+      const dob = patient ? new Date(patient.Tanggal_Lahir) : null;
+      const displayDob = dob && !isNaN(dob.getTime()) ? dob.toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'long',
         year: 'numeric'
-    }) : 'N/A';
-    const visitDate = new Date(res.Tanggal_Datang);
-    const displayVisitDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', {
+      }) : 'N/A';
+      const visitDate = new Date(res.Tanggal_Datang);
+      const displayVisitDate = !isNaN(visitDate.getTime()) ? visitDate.toLocaleString('id-ID', {
         dateStyle: 'full',
         timeStyle: 'short'
-    }) + ' WIB' : 'N/A';
+      }) + ' WIB' : 'N/A';
 
-    const examDataHtml = examData ? `
+      const examDataHtml = examData ? `
         <div>
             <h3 class="font-semibold border-b border-primary pb-1 mb-2">Data Pemeriksaan</h3>
             <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -1604,7 +1606,7 @@ window.showReservationDetailsModal = (reservationId) => {
             </div>
         </div>` : '';
 
-    const modalHtml = `
+      const modalHtml = `
         <div id="detail-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
             <div class="bg-card rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto">
                 <div class="p-6">
@@ -1641,16 +1643,16 @@ window.showReservationDetailsModal = (reservationId) => {
                 </div>
             </div>
         </div>`;
-    document.getElementById('modals-container').innerHTML = modalHtml;
-};
+      document.getElementById('modals-container').innerHTML = modalHtml;
+    };
 
-/**
- * =========================================
- * REKAP PAGE (REPORTING) RENDER & LOGIC
- * =========================================
- */
-function renderRekapPage() {
-    return `
+    /**
+     * =========================================
+     * REKAP PAGE (REPORTING) RENDER & LOGIC
+     * =========================================
+     */
+    function renderRekapPage() {
+      return `
         <div class="space-y-6">
             <div class="p-4 rounded-lg shadow bg-card">
                 <h3 class="font-bold text-lg theme-pink mb-3 border-b border-primary pb-2">Filter Data Laporan</h3>
@@ -1706,10 +1708,10 @@ function renderRekapPage() {
             </div>
         </div>
     `;
-}
+    }
 
-function createChartContainer(canvasId, title, extraClasses = '') {
-    return `
+    function createChartContainer(canvasId, title, extraClasses = '') {
+      return `
         <div class="p-4 rounded-lg shadow bg-card ${extraClasses}">
             <div class="flex justify-between items-center mb-2">
                 <h4 class="font-semibold text-sm text-primary">${title}</h4>
@@ -1719,50 +1721,50 @@ function createChartContainer(canvasId, title, extraClasses = '') {
                 <canvas id="${canvasId}"></canvas>
             </div>
         </div>`;
-}
-
-function setupRekapEventListeners() {
-    document.getElementById('apply-filter-btn').addEventListener('click', applyRekapFilter);
-    document.getElementById('reset-filter-btn').addEventListener('click', resetRekapFilter);
-}
-
-function applyRekapFilter() {
-    const startDateInput = document.getElementById('filter-start-date');
-    const endDateInput = document.getElementById('filter-end-date');
-    const start = new Date(startDateInput.value);
-    const end = new Date(endDateInput.value);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        showToast('Pilih tanggal mulai dan akhir.', 'warning');
-        return;
     }
 
-    // Include the end of the end date
-    end.setHours(23, 59, 59, 999);
+    function setupRekapEventListeners() {
+      document.getElementById('apply-filter-btn').addEventListener('click', applyRekapFilter);
+      document.getElementById('reset-filter-btn').addEventListener('click', resetRekapFilter);
+    }
 
-    const filteredReservations = state.rekapData.rawReservations.filter(res => {
+    function applyRekapFilter() {
+      const startDateInput = document.getElementById('filter-start-date');
+      const endDateInput = document.getElementById('filter-end-date');
+      const start = new Date(startDateInput.value);
+      const end = new Date(endDateInput.value);
+
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        showToast('Pilih tanggal mulai dan akhir.', 'warning');
+        return;
+      }
+
+      // Include the end of the end date
+      end.setHours(23, 59, 59, 999);
+
+      const filteredReservations = state.rekapData.rawReservations.filter(res => {
         const visitDate = new Date(res.Tanggal_Datang);
         return !isNaN(visitDate.getTime()) && visitDate >= start && visitDate <= end;
-    });
+      });
 
-    const newStats = calculateStatsFromReservations(filteredReservations, state.data.allPatients);
+      const newStats = calculateStatsFromReservations(filteredReservations, state.data.allPatients);
 
-    state.rekapFilteredData = {
+      state.rekapFilteredData = {
         stats: newStats,
         rawReservations: filteredReservations
-    };
-    renderAllRekapVisuals(state.rekapFilteredData);
-}
+      };
+      renderAllRekapVisuals(state.rekapFilteredData);
+    }
 
-function resetRekapFilter() {
-    document.getElementById('filter-start-date').value = '';
-    document.getElementById('filter-end-date').value = '';
-    state.rekapFilteredData = null;
-    renderAllRekapVisuals(state.rekapData);
-}
+    function resetRekapFilter() {
+      document.getElementById('filter-start-date').value = '';
+      document.getElementById('filter-end-date').value = '';
+      state.rekapFilteredData = null;
+      renderAllRekapVisuals(state.rekapData);
+    }
 
-function calculateStatsFromReservations(reservations, allPatients) {
-    const stats = {
+    function calculateStatsFromReservations(reservations, allPatients) {
+      const stats = {
         dailyTrend: {},
         categoryCounts: {},
         treatmentNameCounts: {},
@@ -1773,20 +1775,20 @@ function calculateStatsFromReservations(reservations, allPatients) {
         therapistCounts: {},
         calendarData: {}
         // Asumsi ageDemographics dan addressDemographics dihitung di backend atau di fungsi lain yang tidak ditampilkan
-    };
+      };
 
-    const treatmentCategoryMap = state.data.treatments.reduce((map, item) => ({
+      const treatmentCategoryMap = state.data.treatments.reduce((map, item) => ({
         ...map,
         [item.Nama]: item.Kategori
-    }), {});
-    const patientDataMap = allPatients.reduce((map, p) => ({
+      }), {});
+      const patientDataMap = allPatients.reduce((map, p) => ({
         ...map,
         [p.RME]: p
-    }), {});
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      }), {});
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    reservations.forEach(res => {
+      reservations.forEach(res => {
         const visitDate = new Date(res.Tanggal_Datang);
         if (isNaN(visitDate.getTime())) return;
 
@@ -1797,12 +1799,12 @@ function calculateStatsFromReservations(reservations, allPatients) {
 
         // Treatment & Category Counts
         try {
-            JSON.parse(res.Items || '[]').forEach(itemName => {
-                stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1;
-                const category = treatmentCategoryMap[itemName];
-                if (category) stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
-            });
-        } catch (e) {}
+          JSON.parse(res.Items || '[]').forEach(itemName => {
+            stats.treatmentNameCounts[itemName] = (stats.treatmentNameCounts[itemName] || 0) + 1;
+            const category = treatmentCategoryMap[itemName];
+            if (category) stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
+          });
+        } catch (e) { }
 
         // Gender Counts
         const patient = patientDataMap[res.RME];
@@ -1821,126 +1823,126 @@ function calculateStatsFromReservations(reservations, allPatients) {
 
         // Therapist Count
         if (res.Terapis) stats.therapistCounts[res.Terapis] = (stats.therapistCounts[res.Terapis] || 0) + 1;
-    });
+      });
 
-    return stats;
-}
+      return stats;
+    }
 
-function renderAllRekapVisuals(dataToRender) {
-    if (!dataToRender) return;
-    const {
+    function renderAllRekapVisuals(dataToRender) {
+      if (!dataToRender) return;
+      const {
         stats,
         rawReservations
-    } = dataToRender;
-    // Fallback to full data stats if filtered data is incomplete (e.g., for demographics that should cover all time)
-    const allStats = state.rekapData.stats || stats;
+      } = dataToRender;
+      // Fallback to full data stats if filtered data is incomplete (e.g., for demographics that should cover all time)
+      const allStats = state.rekapData.stats || stats;
 
-    // 1. Charts
-    createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend).sort(), Object.keys(stats.dailyTrend).sort().map(key => stats.dailyTrend[key]), 'Grafik Tren Reservasi Harian');
-    createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Distribusi Kategori Treatment');
-    createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Treatment Terpopuler');
-    createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Distribusi Jenis Kelamin Pasien');
-    createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Hari Kunjungan Teramai');
-    // For peakHourChart, use the full list of hours from allStats for consistent X-axis
-    createChart('hourChart', 'line', Object.keys(allStats.peakHourCounts).sort(), Object.keys(allStats.peakHourCounts).sort().map(key => stats.peakHourCounts[key] || 0), 'Jam Kunjungan Puncak');
-    createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Bulan Kunjungan Teramai');
-    createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Kinerja Terapis/Bidan');
-    // For demographics, use allStats as they often represent historical/overall data
-    createChart('ageChart', 'bar', Object.keys(allStats.ageDemographics || {}), Object.values(allStats.ageDemographics || {}), 'Demografi Usia Pasien');
-    createChart('addressChart', 'bar', Object.keys(allStats.addressDemographics || {}), Object.values(allStats.addressDemographics || {}), 'Domisili Pasien Teratas');
+      // 1. Charts
+      createChart('dailyTrendChart', 'line', Object.keys(stats.dailyTrend).sort(), Object.keys(stats.dailyTrend).sort().map(key => stats.dailyTrend[key]), 'Grafik Tren Reservasi Harian');
+      createChart('categoryChart', 'doughnut', Object.keys(stats.categoryCounts), Object.values(stats.categoryCounts), 'Distribusi Kategori Treatment');
+      createChart('treatmentNameChart', 'bar', Object.keys(stats.treatmentNameCounts), Object.values(stats.treatmentNameCounts), 'Treatment Terpopuler');
+      createChart('genderChart', 'pie', Object.keys(stats.genderCounts), Object.values(stats.genderCounts), 'Distribusi Jenis Kelamin Pasien');
+      createChart('dayChart', 'bar', Object.keys(stats.dayCounts), Object.values(stats.dayCounts), 'Hari Kunjungan Teramai');
+      // For peakHourChart, use the full list of hours from allStats for consistent X-axis
+      createChart('hourChart', 'line', Object.keys(allStats.peakHourCounts).sort(), Object.keys(allStats.peakHourCounts).sort().map(key => stats.peakHourCounts[key] || 0), 'Jam Kunjungan Puncak');
+      createChart('monthChart', 'bar', Object.keys(stats.monthCounts), Object.values(stats.monthCounts), 'Bulan Kunjungan Teramai');
+      createChart('therapistChart', 'doughnut', Object.keys(stats.therapistCounts), Object.values(stats.therapistCounts), 'Kinerja Terapis/Bidan');
+      // For demographics, use allStats as they often represent historical/overall data
+      createChart('ageChart', 'bar', Object.keys(allStats.ageDemographics || {}), Object.values(allStats.ageDemographics || {}), 'Demografi Usia Pasien');
+      createChart('addressChart', 'bar', Object.keys(allStats.addressDemographics || {}), Object.values(allStats.addressDemographics || {}), 'Domisili Pasien Teratas');
 
-    // 2. Calendar
-    renderCalendar(stats.calendarData);
+      // 2. Calendar
+      renderCalendar(stats.calendarData);
 
-    // 3. Table
-    renderRekapTable(rawReservations);
-}
-
-// Chart.js helper function
-function createChart(canvasId, type, labels, data, title) {
-    const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
-
-    // Destroy previous chart instance
-    if (window.myCharts && window.myCharts[canvasId]) {
-        window.myCharts[canvasId].destroy();
+      // 3. Table
+      renderRekapTable(rawReservations);
     }
-    if (!window.myCharts) window.myCharts = {};
 
-    // Handle no data scenario
-    if (!data || data.length === 0 || data.every(v => v === 0)) {
+    // Chart.js helper function
+    function createChart(canvasId, type, labels, data, title) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+
+      // Destroy previous chart instance
+      if (window.myCharts && window.myCharts[canvasId]) {
+        window.myCharts[canvasId].destroy();
+      }
+      if (!window.myCharts) window.myCharts = {};
+
+      // Handle no data scenario
+      if (!data || data.length === 0 || data.every(v => v === 0)) {
         ctx.parentElement.innerHTML = `<div class="flex items-center justify-center h-full text-center text-gray-400 text-sm p-4">(Tidak ada data)</div>`;
         return;
-    }
+      }
 
-    const isDark = document.documentElement.classList.contains('dark');
-    const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const textColor = isDark ? '#f9fafb' : '#111827';
-    const vibrantColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8D6E63', '#F48FB1', '#81D4FA', '#FFF59D', '#A5D6A7'];
+      const isDark = document.documentElement.classList.contains('dark');
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      const textColor = isDark ? '#f9fafb' : '#111827';
+      const vibrantColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#E7E9ED', '#8D6E63', '#F48FB1', '#81D4FA', '#FFF59D', '#A5D6A7'];
 
-    window.myCharts[canvasId] = new Chart(ctx, {
+      window.myCharts[canvasId] = new Chart(ctx, {
         type,
         data: {
-            labels,
-            datasets: [{
-                label: 'Jumlah',
-                data,
-                backgroundColor: vibrantColors,
-                borderColor: isDark ? '#1f2937' : '#ffffff',
-                borderWidth: (type === 'pie' || type === 'doughnut') ? 2 : 1
-            }]
+          labels,
+          datasets: [{
+            label: 'Jumlah',
+            data,
+            backgroundColor: vibrantColors,
+            borderColor: isDark ? '#1f2937' : '#ffffff',
+            borderWidth: (type === 'pie' || type === 'doughnut') ? 2 : 1
+          }]
         },
         options: {
-            indexAxis: type === 'bar' && labels.length > 8 ? 'y' : 'x', // Horizontal bars for many labels
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: ['pie', 'doughnut'].includes(type),
-                    labels: {
-                        color: textColor
-                    }
-                },
-                title: {
-                    display: true,
-                    text: title,
-                    color: textColor,
-                    font: {
-                        size: 14
-                    }
-                }
+          indexAxis: type === 'bar' && labels.length > 8 ? 'y' : 'x', // Horizontal bars for many labels
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: ['pie', 'doughnut'].includes(type),
+              labels: {
+                color: textColor
+              }
             },
-            scales: {
-                y: {
-                    display: type !== 'pie' && type !== 'doughnut',
-                    ticks: {
-                        color: textColor
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                },
-                x: {
-                    display: type !== 'pie' && type !== 'doughnut',
-                    ticks: {
-                        color: textColor
-                    },
-                    grid: {
-                        color: gridColor
-                    }
-                }
+            title: {
+              display: true,
+              text: title,
+              color: textColor,
+              font: {
+                size: 14
+              }
             }
+          },
+          scales: {
+            y: {
+              display: type !== 'pie' && type !== 'doughnut',
+              ticks: {
+                color: textColor
+              },
+              grid: {
+                color: gridColor
+              }
+            },
+            x: {
+              display: type !== 'pie' && type !== 'doughnut',
+              ticks: {
+                color: textColor
+              },
+              grid: {
+                color: gridColor
+              }
+            }
+          }
         }
-    });
-}
+      });
+    }
 
-// Chart Zoom Modal
-window.showChartModal = (canvasId) => {
-    const originalChart = window.myCharts[canvasId];
-    if (!originalChart) return;
+    // Chart Zoom Modal
+    window.showChartModal = (canvasId) => {
+      const originalChart = window.myCharts[canvasId];
+      if (!originalChart) return;
 
-    const title = originalChart.config.options.plugins.title.text;
-    const modalHtml = `
+      const title = originalChart.config.options.plugins.title.text;
+      const modalHtml = `
         <div id="chart-zoom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
             <div class="bg-card rounded-lg shadow-xl w-full h-full flex flex-col">
                 <div class="p-4 border-b border-primary flex justify-between items-center">
@@ -1952,49 +1954,49 @@ window.showChartModal = (canvasId) => {
                 </div>
             </div>
         </div>`;
-    document.getElementById('modals-container').innerHTML = modalHtml;
+      document.getElementById('modals-container').innerHTML = modalHtml;
 
-    // Use a slight delay to ensure the new canvas element is rendered in the DOM
-    setTimeout(() => {
+      // Use a slight delay to ensure the new canvas element is rendered in the DOM
+      setTimeout(() => {
         const zoomedCtx = document.getElementById('zoomed-chart-canvas');
         if (!zoomedCtx) {
-            console.error("Canvas zoom tidak ditemukan!");
-            return;
+          console.error("Canvas zoom tidak ditemukan!");
+          return;
         }
 
         const newConfig = {
-            type: originalChart.config.type,
-            data: originalChart.config.data,
-            options: {
-                ...originalChart.config.options,
-                maintainAspectRatio: false,
-                responsive: true,
-            }
+          type: originalChart.config.type,
+          data: originalChart.config.data,
+          options: {
+            ...originalChart.config.options,
+            maintainAspectRatio: false,
+            responsive: true,
+          }
         };
 
         if (window.zoomedChart) window.zoomedChart.destroy();
         window.zoomedChart = new Chart(zoomedCtx, newConfig);
-    }, 0);
-};
+      }, 0);
+    };
 
-// Calendar Renderer
-function renderCalendar(calendarData) {
-    const container = document.getElementById('calendar-container');
-    if (!container) return;
+    // Calendar Renderer
+    function renderCalendar(calendarData) {
+      const container = document.getElementById('calendar-container');
+      if (!container) return;
 
-    // Asumsi state.currentCalendarDate sudah diinisialisasi (misalnya: new Date())
-    if (!state.currentCalendarDate) state.currentCalendarDate = new Date();
+      // Asumsi state.currentCalendarDate sudah diinisialisasi (misalnya: new Date())
+      if (!state.currentCalendarDate) state.currentCalendarDate = new Date();
 
-    const date = state.currentCalendarDate;
-    const month = date.getMonth();
-    const year = date.getFullYear();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+      const date = state.currentCalendarDate;
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
 
-    let html = `
+      let html = `
         <div class="flex justify-between items-center mb-4">
             <button onclick="changeMonth(-1)" class="p-2"><i class="fas fa-chevron-left"></i></button>
-            <h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', {month: 'long', year: 'numeric'})}</h4>
+            <h4 class="font-bold text-center">${date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}</h4>
             <button onclick="changeMonth(1)" class="p-2"><i class="fas fa-chevron-right"></i></button>
         </div>
         <div class="grid grid-cols-7 text-center font-semibold text-sm mb-2">
@@ -2003,13 +2005,13 @@ function renderCalendar(calendarData) {
         <div class="grid grid-cols-7 gap-1">
     `;
 
-    // Empty spaces for days before the 1st
-    for (let i = 0; i < firstDay.getDay(); i++) {
+      // Empty spaces for days before the 1st
+      for (let i = 0; i < firstDay.getDay(); i++) {
         html += `<div></div>`;
-    }
+      }
 
-    // Days of the month
-    for (let day = 1; day <= lastDay.getDate(); day++) {
+      // Days of the month
+      for (let day = 1; day <= lastDay.getDate(); day++) {
         const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const count = calendarData[dateKey] || 0;
         let colorClass = 'bg-gray-200 dark:bg-gray-700';
@@ -2023,28 +2025,28 @@ function renderCalendar(calendarData) {
                 ${count > 0 ? `<span class="mt-1">${count}</span>` : ''}
             </div>
         `;
+      }
+
+      html += `</div>`;
+      container.innerHTML = html;
     }
 
-    html += `</div>`;
-    container.innerHTML = html;
-}
+    window.changeMonth = (direction) => {
+      state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + direction);
+      renderCalendar((state.rekapFilteredData || state.rekapData).stats.calendarData);
+    }
 
-window.changeMonth = (direction) => {
-    state.currentCalendarDate.setMonth(state.currentCalendarDate.getMonth() + direction);
-    renderCalendar((state.rekapFilteredData || state.rekapData).stats.calendarData);
-}
+    // Table Renderer
+    function renderRekapTable(reservations) {
+      const container = document.getElementById('table-container');
+      if (!container) return;
 
-// Table Renderer
-function renderRekapTable(reservations) {
-    const container = document.getElementById('table-container');
-    if (!container) return;
-
-    if (!reservations || reservations.length === 0) {
+      if (!reservations || reservations.length === 0) {
         container.innerHTML = `<p class="text-center text-secondary py-4">Tidak ada data.</p>`;
         return;
-    }
+      }
 
-    let tableHTML = `
+      let tableHTML = `
         <table class="w-full text-sm text-left text-secondary">
             <thead class="text-xs uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0">
                 <tr>
@@ -2057,8 +2059,8 @@ function renderRekapTable(reservations) {
             <tbody>
     `;
 
-    // Sort by most recent timestamp
-    reservations.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => {
+      // Sort by most recent timestamp
+      reservations.sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp)).forEach(res => {
         const d = new Date(res.Tanggal_Datang);
         const dateStr = isNaN(d.getTime()) ? 'Invalid' : d.toLocaleDateString('id-ID');
         tableHTML += `
@@ -2069,34 +2071,34 @@ function renderRekapTable(reservations) {
                 <td class="px-4 py-2">${res.Status}</td>
             </tr>
         `;
-    });
+      });
 
-    tableHTML += `</tbody></table>`;
-    container.innerHTML = tableHTML;
-}
-
-/**
- * =========================================
- * PDF EXPORT AND DOWNLOAD
- * =========================================
- */
-window.printSection = async (elementId, title) => {
-    // Check for required libraries
-    const {
-        jsPDF
-    } = window.jspdf || {};
-    if (!jsPDF || !window.html2canvas) {
-        showToast('Library PDF/Screenshot tidak dimuat.', 'error');
-        return;
+      tableHTML += `</tbody></table>`;
+      container.innerHTML = tableHTML;
     }
 
-    const elementToPrint = document.getElementById(elementId);
-    if (!elementToPrint) return;
+    /**
+     * =========================================
+     * PDF EXPORT AND DOWNLOAD
+     * =========================================
+     */
+    window.printSection = async (elementId, title) => {
+      // Check for required libraries
+      const {
+        jsPDF
+      } = window.jspdf || {};
+      if (!jsPDF || !window.html2canvas) {
+        showToast('Library PDF/Screenshot tidak dimuat.', 'error');
+        return;
+      }
 
-    showToast('Mempersiapkan PDF...', 'info');
-    setLoading(true);
+      const elementToPrint = document.getElementById(elementId);
+      if (!elementToPrint) return;
 
-    try {
+      showToast('Mempersiapkan PDF...', 'info');
+      setLoading(true);
+
+      try {
         const pdf = new jsPDF('p', 'mm', 'a4');
         const isDark = document.documentElement.classList.contains('dark');
         const backgroundColor = isDark ? '#111827' : '#ffffff';
@@ -2107,9 +2109,9 @@ window.printSection = async (elementId, title) => {
 
         // 2. Capture Content
         const canvas = await html2canvas(elementToPrint, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: backgroundColor
+          scale: 2,
+          useCORS: true,
+          backgroundColor: backgroundColor
         });
         const imgData = canvas.toDataURL('image/png');
         const imgProps = pdf.getImageProperties(imgData);
@@ -2121,9 +2123,9 @@ window.printSection = async (elementId, title) => {
 
         // Check if content fits in one page
         if (pdfHeight > (pdf.internal.pageSize.getHeight() - position - 10)) {
-            // Complex logic for multi-page content (Simplified: just add to first page, may overflow)
-            // A more robust solution would involve iteratively splitting the element or using a plugin for auto-paging.
-            // For now, let's keep the original logic which assumes it fits or accepts cropping/stretching.
+          // Complex logic for multi-page content (Simplified: just add to first page, may overflow)
+          // A more robust solution would involve iteratively splitting the element or using a plugin for auto-paging.
+          // For now, let's keep the original logic which assumes it fits or accepts cropping/stretching.
         }
 
         pdf.addImage(imgData, 'PNG', 10, position, pdfWidth, pdfHeight);
@@ -2132,41 +2134,41 @@ window.printSection = async (elementId, title) => {
         pdf.save(`${title.replace(/ /g, '-')}.pdf`);
         showToast('PDF berhasil dibuat!', 'success');
 
-    } catch (error) {
+      } catch (error) {
         console.error('PDF generation error:', error);
         showToast('Gagal membuat PDF.', 'error');
-    } finally {
+      } finally {
         setLoading(false);
+      }
     }
-}
 
-window.handlePrintReservation = async (reservationId) => {
-    showToast('Mempersiapkan PDF...', 'info');
-    setLoading(true);
+    window.handlePrintReservation = async (reservationId) => {
+      showToast('Mempersiapkan PDF...', 'info');
+      setLoading(true);
 
-    const result = await callBackend('GET', 'generatePdf', {
+      const result = await callBackend('GET', 'generatePdf', {
         reservationId
-    });
-    setLoading(false);
+      });
+      setLoading(false);
 
-    if (result.status === 'success' && result.data.base64) {
+      if (result.status === 'success' && result.data.base64) {
         downloadPdfFromBase64(result.data.base64, result.data.fileName);
         showToast('PDF berhasil dibuat!', 'success');
-    } else {
+      } else {
         showToast(`Gagal: ${result.message}`, 'error');
-    }
-};
+      }
+    };
 
-function downloadPdfFromBase64(base64String, fileName) {
-    try {
+    function downloadPdfFromBase64(base64String, fileName) {
+      try {
         const byteCharacters = atob(base64String);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
         }
         const byteArray = new Uint8Array(byteNumbers);
         const blob = new Blob([byteArray], {
-            type: 'application/pdf'
+          type: 'application/pdf'
         });
         const url = URL.createObjectURL(blob);
 
@@ -2179,14 +2181,14 @@ function downloadPdfFromBase64(base64String, fileName) {
 
         window.URL.revokeObjectURL(url);
         a.remove();
-    } catch (error) {
+      } catch (error) {
         console.error('Download PDF error:', error);
         showToast('Gagal mengunduh PDF.', 'error');
+      }
     }
-}
 
-// Initial theme application (call this once on load)
-// applyInitialTheme();
+    // Initial theme application (call this once on load)
+    // applyInitialTheme();
 
     // --- 3. INISIALISASI APLIKASI ---
     // Menjalankan fungsi setelah seluruh konten HTML selesai dimuat.
@@ -2200,4 +2202,3 @@ function downloadPdfFromBase64(base64String, fileName) {
 </body>
 
 </html>
-
