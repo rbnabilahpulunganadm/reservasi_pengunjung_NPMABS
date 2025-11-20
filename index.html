@@ -222,6 +222,53 @@
       /* Kelas untuk menampilkan badge */
     }
 
+    /* Style untuk indikator data pasien yang mungkin sama */
+    .duplicate-warning {
+      background-color: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-top: 8px;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    html.dark .duplicate-warning {
+      background-color: #451a03;
+      border-color: #d97706;
+    }
+
+    .duplicate-warning.hidden {
+      display: none;
+    }
+
+    /* Style untuk popup notifikasi waktu penuh */
+    .full-schedule-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+
+    html.dark .full-schedule-popup {
+      background-color: #1f2937;
+      color: white;
+    }
+
+    .full-schedule-popup.hidden {
+      display: none;
+    }
+
     /* Keyframes untuk animasi kelopak bunga jatuh */
     @keyframes blossom-fall {
       0% {
@@ -346,6 +393,18 @@
     <div class="loader"></div>
   </div>
 
+  <!-- Popup notifikasi waktu reservasi penuh -->
+  <div id="full-schedule-popup" class="full-schedule-popup hidden">
+    <div class="mb-4">
+      <i class="fas fa-calendar-times text-4xl text-red-500 mb-3"></i>
+      <h3 class="text-xl font-bold mb-2">Waktu Reservasi Penuh</h3>
+      <p class="text-gray-600 dark:text-gray-300">Maaf, waktu yang Anda pilih sudah penuh. Silakan pilih waktu lain yang tersedia.</p>
+    </div>
+    <button id="close-full-schedule-popup" class="bg-theme-pink text-white px-4 py-2 rounded-lg w-full">
+      Pilih Waktu Lain
+    </button>
+  </div>
+
   <script>
     // --- 1. KONFIGURASI & STATE GLOBAL ---
 
@@ -371,7 +430,12 @@
       rekapData: null, // Data mentah untuk halaman laporan.
       rekapFilteredData: null, // Data laporan yang sudah difilter.
       currentCalendarDate: new Date(), // Tanggal saat ini untuk navigasi kalender.
-      newReservationCount: 0 // Jumlah notifikasi reservasi baru.
+      newReservationCount: 0, // Jumlah notifikasi reservasi baru.
+      duplicatePatientCheck: { // State untuk pengecekan data pasien duplikat
+        isChecking: false,
+        matches: [],
+        lastChecked: null
+      }
     };
 
     // --- 2. FUNGSI-FUNGSI DEFINISI ---
@@ -396,6 +460,11 @@
       document.querySelectorAll('.nav-tab').forEach(tab => {
         // Menambahkan event listener 'click' pada setiap tab.
         tab.addEventListener('click', () => navigateTo(tab.dataset.tab));
+      });
+      
+      // Event listener untuk menutup popup waktu penuh
+      document.getElementById('close-full-schedule-popup').addEventListener('click', () => {
+        document.getElementById('full-schedule-popup').classList.add('hidden');
       });
     }
 
@@ -1093,7 +1162,6 @@
      * =========================================
      */
     window.showPasswordModal = (targetTab = null) => {
-      const cancelAction = targetTab ? "navigateTo('home')" : "closeModal('password-modal')";
       const modalHtml = `
         <div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
             <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card">
@@ -1102,7 +1170,7 @@
                     <p class="text-center text-sm text-secondary">Masukkan sandi.</p>
                     <input type="password" id="password-input" name="password" placeholder="Sandi" class="mt-1 w-full text-center border-gray-300 rounded-md shadow-sm input-field p-3" required autocomplete="current-password">
                     <div class="flex justify-center gap-3 pt-4">
-                        <button type="button" onclick="${cancelAction}" class="px-6 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Batal</button>
+                        <button type="button" onclick="closeModal('password-modal')" class="px-6 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Batal</button>
                         <button type="submit" class="px-6 py-2 bg-theme-pink text-white rounded-lg">Masuk</button>
                     </div>
                 </form>
@@ -1156,17 +1224,24 @@
             <div class="rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto bg-card">
                 <form id="reservation-form" class="p-6 space-y-4">
                     <h2 class="text-2xl font-bold mb-4 theme-pink">Form Reservasi</h2>
+                    
+                    <!-- Indikator data pasien yang mungkin sama -->
+                    <div id="duplicate-warning" class="duplicate-warning hidden">
+                      <i class="fas fa-exclamation-triangle text-yellow-500"></i>
+                      <span>Kami menemukan data pasien yang mungkin sama. Silakan periksa data di bawah ini.</span>
+                    </div>
+                    
                     <div class="relative">
                         <label class="block text-sm font-medium">Cari Pasien Lama (Opsional)</label>
                         <input type="text" id="search-old-patient-input" placeholder="Ketik nama atau RME..." class="mt-1 w-full rounded-md shadow-sm input-field">
                         <div id="search-results-pasien-lama-modal" class="absolute z-20 w-full mt-1 border rounded-lg shadow-lg hidden bg-secondary border-primary max-h-48 overflow-y-auto"></div>
                     </div>
-                    <div><label class="block text-sm font-medium">Nama Pemesan</label><input type="text" name="requesterName" class="mt-1 w-full rounded-md shadow-sm input-field" required></div>
-                    <div><label class="block text-sm font-medium">No. HP/WA</label><input type="tel" name="phone" class="mt-1 w-full rounded-md shadow-sm input-field" required></div>
+                    <div><label class="block text-sm font-medium">Nama Pemesan</label><input type="text" name="requesterName" class="mt-1 w-full rounded-md shadow-sm input-field" required oninput="checkForDuplicatePatient()"></div>
+                    <div><label class="block text-sm font-medium">No. HP/WA</label><input type="tel" name="phone" class="mt-1 w-full rounded-md shadow-sm input-field" required oninput="checkForDuplicatePatient()"></div>
                     <div><label class="block text-sm font-medium">Instagram (opsional)</label><input type="text" name="instagram" class="mt-1 w-full rounded-md shadow-sm input-field"></div>
                     <div><label class="block text-sm font-medium">Alamat Domisili</label><input type="text" name="address" class="mt-1 w-full rounded-md shadow-sm input-field" required></div>
                     <hr class="border-primary"/>
-                    <div><label class="block text-sm font-medium">Nama Pasien</label><input type="text" name="patientName" class="mt-1 w-full rounded-md shadow-sm input-field" required></div>
+                    <div><label class="block text-sm font-medium">Nama Pasien</label><input type="text" name="patientName" class="mt-1 w-full rounded-md shadow-sm input-field" required oninput="checkForDuplicatePatient()"></div>
                     <div><label class="block text-sm font-medium">Tgl Lahir Pasien</label><input type="date" name="dob" id="dob-input" class="mt-1 w-full rounded-md shadow-sm input-field" required></div>
                     <div>
                         <label class="block text-sm font-medium">Jenis Kelamin</label>
@@ -1193,6 +1268,56 @@
       setupReservationFormListeners();
     };
 
+    /**
+     * Fungsi untuk mengecek data pasien yang mungkin sama
+     */
+    window.checkForDuplicatePatient = async () => {
+      const form = document.getElementById('reservation-form');
+      if (!form) return;
+      
+      const requesterName = form.requesterName.value.trim();
+      const patientName = form.patientName.value.trim();
+      const phone = form.phone.value.trim();
+      
+      // Jika tidak ada cukup data untuk dicek, sembunyikan warning
+      if ((!requesterName && !patientName) || phone.length < 3) {
+        document.getElementById('duplicate-warning').classList.add('hidden');
+        state.duplicatePatientCheck.matches = [];
+        return;
+      }
+      
+      // Cegah pengecekan terlalu sering
+      const now = Date.now();
+      if (state.duplicatePatientCheck.isChecking || 
+          (state.duplicatePatientCheck.lastChecked && 
+           now - state.duplicatePatientCheck.lastChecked < 1000)) {
+        return;
+      }
+      
+      state.duplicatePatientCheck.isChecking = true;
+      state.duplicatePatientCheck.lastChecked = now;
+      
+      try {
+        const result = await callBackend('GET', 'checkExistingPatient', {
+          patientName: patientName,
+          requesterName: requesterName,
+          phone: phone
+        });
+        
+        if (result.status === 'success' && result.data.length > 0) {
+          state.duplicatePatientCheck.matches = result.data;
+          document.getElementById('duplicate-warning').classList.remove('hidden');
+        } else {
+          state.duplicatePatientCheck.matches = [];
+          document.getElementById('duplicate-warning').classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Error checking duplicate patient:', error);
+      } finally {
+        state.duplicatePatientCheck.isChecking = false;
+      }
+    };
+
     function setupReservationFormListeners() {
       populateTimeOptions();
       document.getElementById('dob-input').addEventListener('change', updateAgeAndDay);
@@ -1203,6 +1328,14 @@
         const target = e.target.closest('.search-result-item');
         if (target && target.dataset.index) {
           window.selectPatientAndFillForm(target.dataset.index);
+        }
+      });
+      
+      // Event listener untuk menampilkan popup waktu penuh
+      document.querySelector('select[name="visitTime"]').addEventListener('change', (e) => {
+        // Simulasi pengecekan waktu penuh (dalam implementasi nyata, ini akan memanggil backend)
+        if (Math.random() > 0.7) { // 30% kemungkinan waktu penuh untuk demo
+          document.getElementById('full-schedule-popup').classList.remove('hidden');
         }
       });
     }
@@ -1826,7 +1959,7 @@
         ...map,
         [p.RME]: p
       }), {});
-      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+      const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabru'];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
       
       // Inisialisasi jam agar grafik jam konsisten
