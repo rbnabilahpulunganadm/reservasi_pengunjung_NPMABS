@@ -801,6 +801,10 @@
           navigateTo('reservations'); // Pindah ke halaman reservasi.
         } else {
           showToast(`Gagal: ${result.message}`, 'error'); // Tampilkan pesan error jika gagal.
+          // Jika backend mengembalikan pesan penuh, kita tampilkan popup juga
+          if (result.message.includes('penuh') || result.message.includes('Maks 2')) {
+             document.getElementById('full-schedule-popup').classList.remove('hidden');
+          }
         }
       }
     };
@@ -1331,12 +1335,11 @@
         }
       });
       
-      // Event listener untuk menampilkan popup waktu penuh
+      // --- PERBAIKAN: Menghapus listener yang secara acak memunculkan error "Penuh" ---
+      // Kode lama yang mengandung Math.random() > 0.7 telah dihapus.
+      // Popup penuh hanya akan muncul jika Backend mengembalikan pesan penuh.
       document.querySelector('select[name="visitTime"]').addEventListener('change', (e) => {
-        // Simulasi pengecekan waktu penuh (dalam implementasi nyata, ini akan memanggil backend)
-        if (Math.random() > 0.7) { // 30% kemungkinan waktu penuh untuk demo
-          document.getElementById('full-schedule-popup').classList.remove('hidden');
-        }
+          // Tidak melakukan apa-apa saat ganti jam, tunggu submit.
       });
     }
 
