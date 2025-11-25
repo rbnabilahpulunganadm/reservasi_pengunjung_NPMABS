@@ -269,6 +269,23 @@
       display: none;
     }
 
+    /* PERBAIKAN: Style untuk tombol close modal */
+    .modal-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+
+    .modal-close-btn:hover {
+      color: var(--text-primary);
+    }
+
     /* Keyframes untuk animasi kelopak bunga jatuh */
     @keyframes blossom-fall {
       0% {
@@ -393,8 +410,12 @@
     <div class="loader"></div>
   </div>
 
-  <!-- Popup notifikasi waktu reservasi penuh -->
+  <!-- PERBAIKAN: Popup notifikasi waktu reservasi penuh DENGAN TOMBOL CLOSE -->
   <div id="full-schedule-popup" class="full-schedule-popup hidden">
+    <!-- Tombol close baru ditambahkan -->
+    <button class="modal-close-btn" onclick="closeModal('full-schedule-popup')">
+      <i class="fas fa-times"></i>
+    </button>
     <div class="mb-4">
       <i class="fas fa-calendar-times text-4xl text-red-500 mb-3"></i>
       <h3 class="text-xl font-bold mb-2">Waktu Reservasi Penuh</h3>
@@ -786,7 +807,7 @@
         requesterName: data.requesterName
       });
 
-      // Jika ditemukan data yang mirip.
+      // Jika ditemukan data yang mirik.
       if (checkResult.status === 'success' && checkResult.data.length > 0) {
         // Tampilkan modal konfirmasi untuk memilih pasien lama atau membuat baru.
         showDuplicatePatientModal(checkResult.data, data);
@@ -801,10 +822,6 @@
           navigateTo('reservations'); // Pindah ke halaman reservasi.
         } else {
           showToast(`Gagal: ${result.message}`, 'error'); // Tampilkan pesan error jika gagal.
-          // Jika backend mengembalikan pesan penuh, kita tampilkan popup juga
-          if (result.message.includes('penuh') || result.message.includes('Maks 2')) {
-             document.getElementById('full-schedule-popup').classList.remove('hidden');
-          }
         }
       }
     };
@@ -823,9 +840,13 @@
             </label>
         `).join('');
 
+      // PERBAIKAN: Menambahkan tombol close (X) di modal
       const modalHtml = `
         <div id="duplicate-patient-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card">
+            <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card relative">
+                <button class="modal-close-btn" onclick="closeModal('duplicate-patient-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
                 <div class="p-6">
                     <h2 class="text-xl font-bold text-center theme-pink">Konfirmasi Data Pasien</h2>
                     <p class="text-center text-sm text-secondary mt-2 mb-4">Kami menemukan data yang mungkin sama. Apakah pasien yang Anda maksud adalah salah satu di bawah ini?</p>
@@ -875,7 +896,10 @@
       // Buat HTML untuk modal form terapis.
       const modalHtml = `
             <div id="therapist-form-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
-                <div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card">
+                <div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card relative">
+                    <button class="modal-close-btn" onclick="closeModal('therapist-form-modal')">
+                        <i class="fas fa-times"></i>
+                    </button>
                     <form id="therapist-form" class="p-6">
                         <h2 class="text-2xl font-bold mb-4 theme-pink">${isEdit ? 'Edit' : 'Tambah'} Terapis</h2>
                         <input type="hidden" name="id" value="${isEdit ? therapist.ID_Terapis : ''}">
@@ -910,6 +934,28 @@
         showToast(`Gagal: ${result.message}`, 'error');
       }
     };
+
+    // --- FUNGSI BARU UNTUK PENGECEKAN JADWAL REAL-TIME ---
+
+    /**
+     * Memeriksa ketersediaan jadwal secara real-time
+     * @param {string} visitDate - Tanggal kunjungan
+     * @param {string} visitTime - Waktu kunjungan
+     */
+    async function checkScheduleAvailability(visitDate, visitTime) {
+      if (!visitDate || !visitTime) return true;
+      
+      const result = await callBackend('GET', 'checkScheduleAvailability', {
+        visitDate,
+        visitTime
+      });
+      
+      if (result.status === 'success') {
+        return result.data.available;
+      }
+      
+      return true; // Default to available if there's an error
+    }
 
     // --- SEMUA FUNGSI LAINNYA ---
     /**
@@ -1168,7 +1214,10 @@
     window.showPasswordModal = (targetTab = null) => {
       const modalHtml = `
         <div id="password-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card">
+            <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card relative">
+                <button class="modal-close-btn" onclick="closeModal('password-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
                 <form id="password-form" class="p-8 space-y-4">
                     <h2 class="text-2xl font-bold text-center theme-pink">Akses Terbatas</h2>
                     <p class="text-center text-sm text-secondary">Masukkan sandi.</p>
@@ -1335,11 +1384,17 @@
         }
       });
       
-      // --- PERBAIKAN: Menghapus listener yang secara acak memunculkan error "Penuh" ---
-      // Kode lama yang mengandung Math.random() > 0.7 telah dihapus.
-      // Popup penuh hanya akan muncul jika Backend mengembalikan pesan penuh.
-      document.querySelector('select[name="visitTime"]').addEventListener('change', (e) => {
-          // Tidak melakukan apa-apa saat ganti jam, tunggu submit.
+      // PERBAIKAN: Event listener untuk menampilkan popup waktu penuh berdasarkan data REAL
+      document.querySelector('select[name="visitTime"]').addEventListener('change', async (e) => {
+        const visitDate = document.querySelector('input[name="visitDate"]').value;
+        const visitTime = e.target.value;
+        
+        if (visitDate && visitTime) {
+          const isAvailable = await checkScheduleAvailability(visitDate, visitTime);
+          if (!isAvailable) {
+            document.getElementById('full-schedule-popup').classList.remove('hidden');
+          }
+        }
       });
     }
 
@@ -1495,7 +1550,10 @@
       const dob = patient.Tanggal_Lahir ? new Date(patient.Tanggal_Lahir).toISOString().split('T')[0] : '';
       const modalHtml = `
         <div id="update-patient-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto bg-card">
+            <div class="rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto bg-card relative">
+                <button class="modal-close-btn" onclick="closeModal('update-patient-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
                 <form id="update-patient-form" class="p-6 space-y-4">
                     <h2 class="text-2xl font-bold mb-4 theme-pink">Update Data Pasien (${patient.RME})</h2>
                     <input type="hidden" name="rme" value="${patient.RME}">
@@ -1631,7 +1689,10 @@
 
       const modalHtml = `
         <div id="item-form-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card">
+            <div class="rounded-lg shadow-xl w-full max-w-lg m-4 bg-card relative">
+                <button class="modal-close-btn" onclick="closeModal('item-form-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
                 <form id="item-form" class="p-6">
                     <h2 class="text-2xl font-bold mb-4 theme-pink">${title}</h2>
                     <input type="hidden" name="id" value="${isEdit ? (item.ID_Treatment || item.ID_Produk) : ''}">
@@ -1744,11 +1805,13 @@
 
       const modalHtml = `
         <div id="detail-modal" class="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-50">
-            <div class="bg-card rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-card rounded-lg shadow-xl w-full max-w-lg m-4 max-h-[90vh] overflow-y-auto relative">
+                <button class="modal-close-btn" onclick="closeModal('detail-modal')">
+                    <i class="fas fa-times"></i>
+                </button>
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-bold theme-pink">Detail Reservasi</h2>
-                        <button onclick="closeModal('detail-modal')" class="text-secondary text-2xl">&times;</button>
                     </div>
                     <div class="space-y-4">
                         <div>
