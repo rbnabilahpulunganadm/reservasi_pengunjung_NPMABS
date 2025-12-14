@@ -832,59 +832,139 @@
      * @param {object} originalFormData - Data dari form reservasi awal.
      */
     function showDuplicatePatientModal(matches, originalFormData) {
-      const matchesHtml = matches.map((p, index) => `
-            <label for="match-${index}" class="block p-3 border-b border-primary last:border-b-0 hover:bg-pink-50 dark:hover:bg-gray-700 cursor-pointer">
-                <input type="radio" id="match-${index}" name="selectedPatient" value="${p.RME}" class="mr-3">
-                <span class="font-semibold">${p.Nama_Pasien}</span> <span class="text-sm text-secondary">(${p.RME})</span>
-                <p class="text-sm text-secondary ml-6">${p.No_HP} - ${p.Alamat}</p>
+        // Membuat elemen HTML untuk setiap pasien yang cocok (dengan class tambahan untuk pencarian)
+        const matchesHtml = matches.map((p, index) => `
+            <label for="match-${index}" class="duplicate-patient-item block p-3 border-b border-primary last:border-b-0 hover:bg-pink-50 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200">
+                <div class="flex items-start">
+                    <input type="radio" id="match-${index}" name="selectedPatient" value="${p.RME}" class="mt-1 mr-3 text-pink-500 focus:ring-pink-500">
+                    <div class="flex-1">
+                        <div class="flex justify-between">
+                            <span class="font-semibold patient-name">${p.Nama_Pasien}</span> 
+                            <span class="text-sm text-secondary patient-rme">(${p.RME})</span>
+                        </div>
+                        <p class="text-sm text-secondary mt-1 patient-info"><i class="fas fa-phone-alt fa-xs mr-1"></i>${p.No_HP} <br> <i class="fas fa-map-marker-alt fa-xs mr-1"></i>${p.Alamat}</p>
+                    </div>
+                </div>
             </label>
         `).join('');
 
-      // PERBAIKAN: Menambahkan tombol close (X) di modal
-      const modalHtml = `
-        <div id="duplicate-patient-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <div class="rounded-lg shadow-xl w-full max-w-sm m-4 bg-card relative">
-                <button class="modal-close-btn" onclick="closeModal('duplicate-patient-modal')">
-                    <i class="fas fa-times"></i>
-                </button>
-                <div class="p-6">
-                    <h2 class="text-xl font-bold text-center theme-pink">Konfirmasi Data Pasien</h2>
-                    <p class="text-center text-sm text-secondary mt-2 mb-4">Kami menemukan data yang mungkin sama. Apakah pasien yang Anda maksud adalah salah satu di bawah ini?</p>
-                    <div class="border rounded-lg max-h-60 overflow-y-auto">${matchesHtml}</div>
+        // Modal HTML Struktur baru dengan kolom pencarian
+        const modalHtml = `
+        <div id="duplicate-patient-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm transition-opacity">
+            <div class="rounded-xl shadow-2xl w-full max-w-md m-4 bg-card relative overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+                
+                <!-- Header Modal -->
+                <div class="p-6 pb-2">
+                    <button class="modal-close-btn absolute top-3 right-3 text-gray-400 hover:text-gray-600 z-10" onclick="closeModal('duplicate-patient-modal')">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                    
+                    <div class="text-center mb-4">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-pink-100 mb-2">
+                            <i class="fas fa-user-friends text-pink-600 text-xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold theme-pink">Konfirmasi Data Pasien</h2>
+                        <p class="text-sm text-secondary mt-1">Kami menemukan data yang mirip.</p>
+                    </div>
+
+                    <!-- Search Input Baru -->
+                    <div class="relative mb-3">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="duplicate-search-input" 
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 sm:text-sm transition duration-150 ease-in-out dark:bg-gray-800 dark:border-gray-600 dark:text-white input-field" 
+                            placeholder="Cari nama atau RME disini..." autofocus autocomplete="off">
+                    </div>
+                    
+                    <p class="text-xs text-secondary mb-2">Pilih data yang sesuai dari daftar di bawah:</p>
                 </div>
-                <div class="p-4 bg-secondary rounded-b-lg flex justify-center gap-3">
-                    <button id="btn-not-me" class="px-5 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg text-sm">Ini Pasien Baru</button>
-                    <button id="btn-its-me" class="px-5 py-2 bg-theme-pink text-white rounded-lg text-sm">Ya, Gunakan Data Ini</button>
+                
+                <!-- Daftar Pasien (Scrollable Area) -->
+                <div class="flex-1 overflow-y-auto px-6 pb-2" id="duplicate-list-container">
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg shadow-inner bg-gray-50 dark:bg-gray-900">
+                        ${matchesHtml}
+                        <div id="no-duplicate-found" class="hidden p-8 text-center text-sm text-gray-500">
+                            <i class="fas fa-search-minus text-2xl mb-2 text-gray-300"></i>
+                            <p>Data tidak ditemukan.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="p-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col sm:flex-row gap-3 justify-center border-t border-gray-100 dark:border-gray-700 mt-2">
+                    <button id="btn-not-me" class="w-full sm:w-auto px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors shadow-sm">
+                        <i class="fas fa-user-plus mr-1"></i> Ini Pasien Baru
+                    </button>
+                    <button id="btn-its-me" class="w-full sm:w-auto px-4 py-2 bg-theme-pink text-white rounded-lg text-sm font-medium hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 shadow-md transition-all transform hover:scale-105">
+                        <i class="fas fa-check mr-1"></i> Ya, Gunakan Data Ini
+                    </button>
                 </div>
             </div>
         </div>`;
-      document.getElementById('modals-container').innerHTML = modalHtml;
+        
+        document.getElementById('modals-container').innerHTML = modalHtml;
 
-      document.getElementById('btn-its-me').addEventListener('click', async () => {
-        const selectedRME = document.querySelector('input[name="selectedPatient"]:checked');
-        if (!selectedRME) {
-          showToast('Silakan pilih salah satu data pasien.', 'warning');
-          return;
-        }
-        originalFormData.existingRME = selectedRME.value;
-        const result = await callBackend('POST', 'newReservation', originalFormData);
-        if (result.status === 'success') {
-          closeModal('reservation-modal');
-          closeModal('duplicate-patient-modal');
-          showToast(`Reservasi untuk pasien lama berhasil!`, 'success');
-          state.selectedItems = []; updateCartFab(); navigateTo('reservations');
-        } else { showToast(`Gagal: ${result.message}`, 'error'); }
-      });
+        // --- Logic Pencarian Otomatis ---
+        const searchInput = document.getElementById('duplicate-search-input');
+        const items = document.querySelectorAll('.duplicate-patient-item');
+        const noResult = document.getElementById('no-duplicate-found');
 
-      document.getElementById('btn-not-me').addEventListener('click', async () => {
-        const result = await callBackend('POST', 'newReservation', originalFormData);
-        if (result.status === 'success') {
-          closeModal('reservation-modal');
-          closeModal('duplicate-patient-modal');
-          showToast(`Reservasi untuk pasien baru berhasil! RME: ${result.data.rme}`, 'success');
-          state.selectedItems = []; updateCartFab(); navigateTo('reservations');
-        } else { showToast(`Gagal: ${result.message}`, 'error'); }
-      });
+        // Fokus otomatis ke input search saat modal muncul
+        setTimeout(() => searchInput.focus(), 100);
+
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            let visibleCount = 0;
+
+            items.forEach(item => {
+                const name = item.querySelector('.patient-name').textContent.toLowerCase();
+                const rme = item.querySelector('.patient-rme').textContent.toLowerCase();
+                const info = item.querySelector('.patient-info').textContent.toLowerCase();
+                
+                // Cek apakah term ada di nama, rme, atau info (hp/alamat)
+                if (name.includes(term) || rme.includes(term) || info.includes(term)) {
+                    item.style.display = 'block'; 
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Tampilkan pesan jika tidak ada hasil
+            if (visibleCount === 0) {
+                noResult.classList.remove('hidden');
+            } else {
+                noResult.classList.add('hidden');
+            }
+        });
+
+        // Event Listeners untuk Tombol Aksi (sama seperti sebelumnya)
+        document.getElementById('btn-its-me').addEventListener('click', async () => {
+            const selectedRME = document.querySelector('input[name="selectedPatient"]:checked');
+            if (!selectedRME) {
+            showToast('Silakan pilih salah satu data pasien.', 'warning');
+            return;
+            }
+            originalFormData.existingRME = selectedRME.value;
+            const result = await callBackend('POST', 'newReservation', originalFormData);
+            if (result.status === 'success') {
+            closeModal('reservation-modal');
+            closeModal('duplicate-patient-modal');
+            showToast(`Reservasi untuk pasien lama berhasil!`, 'success');
+            state.selectedItems = []; updateCartFab(); navigateTo('reservations');
+            } else { showToast(`Gagal: ${result.message}`, 'error'); }
+        });
+
+        document.getElementById('btn-not-me').addEventListener('click', async () => {
+            const result = await callBackend('POST', 'newReservation', originalFormData);
+            if (result.status === 'success') {
+            closeModal('reservation-modal');
+            closeModal('duplicate-patient-modal');
+            showToast(`Reservasi untuk pasien baru berhasil! RME: ${result.data.rme}`, 'success');
+            state.selectedItems = []; updateCartFab(); navigateTo('reservations');
+            } else { showToast(`Gagal: ${result.message}`, 'error'); }
+        });
     }
 
     /**
