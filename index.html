@@ -116,14 +116,22 @@
       color: var(--text-primary);
     }
 
+    /* PERBAIKAN 1: Input field dalam mode gelap - lebih kontras */
+    html.dark .input-field {
+      background-color: #2d3748; /* Sedikit lebih terang dari #1f2937 untuk kontras lebih baik */
+      border-color: #4a5568;     /* Sedikit lebih kontras dari #4b5563 */
+      color: #f7fafc;            /* Sedikit lebih terang dari #f9fafb untuk keterbacaan lebih baik */
+    }
+
     /* Styling untuk input yang hanya bisa dibaca (readonly) */
     .input-readonly {
       background-color: #e5e7eb;
     }
 
+    /* PERBAIKAN 2: Input readonly dalam mode gelap - lebih terang dan kontras */
     html.dark .input-readonly {
-      background-color: #374151;
-      /* Warna readonly untuk tema gelap */
+      background-color: #4a5568; /* Lebih terang dari #374151 untuk kontras lebih baik */
+      color: #e2e8f0;            /* Warna teks yang lebih kontras */
     }
 
     /* Styling untuk kontainer canvas chart */
@@ -284,6 +292,66 @@
 
     .modal-close-btn:hover {
       color: var(--text-primary);
+    }
+
+    /* PERBAIKAN 3: Style untuk modal duplicate patient dalam mode gelap */
+    html.dark .duplicate-patient-item {
+      border-color: #4b5563; /* Border lebih terlihat dalam mode gelap */
+    }
+
+    html.dark .duplicate-patient-item:hover {
+      background-color: #374151; /* Warna hover yang lebih kontras */
+    }
+
+    /* PERBAIKAN 4: Style untuk search input dalam modal duplicate patient */
+    html.dark #duplicate-search-input {
+      background-color: #2d3748; /* Background lebih kontras */
+      border-color: #4a5568;     /* Border lebih terlihat */
+      color: #f7fafc;            /* Teks lebih terang */
+    }
+
+    html.dark #duplicate-search-input::placeholder {
+      color: #a0aec0; /* Placeholder lebih terlihat */
+    }
+
+    /* PERBAIKAN 5: Style untuk kontainer daftar pasien dalam modal */
+    html.dark #duplicate-list-container .border-gray-200 {
+      border-color: #4b5563; /* Border lebih terlihat */
+    }
+
+    html.dark #duplicate-list-container .bg-gray-50 {
+      background-color: #1f2937; /* Background kontainer */
+    }
+
+    /* PERBAIKAN 6: Style untuk footer modal duplicate patient dalam mode gelap */
+    html.dark #duplicate-patient-modal .bg-gray-50 {
+      background-color: #1f2937; /* Background footer */
+    }
+
+    html.dark #duplicate-patient-modal .border-gray-100 {
+      border-color: #374151; /* Border footer lebih terlihat */
+    }
+
+    html.dark #duplicate-patient-modal button.bg-white {
+      background-color: #374151; /* Tombol "Ini Pasien Baru" lebih kontras */
+      color: #e5e7eb;            /* Warna teks tombol */
+    }
+
+    html.dark #duplicate-patient-modal button.bg-white:hover {
+      background-color: #4b5563; /* Warna hover tombol */
+    }
+
+    /* PERBAIKAN 7: Style untuk teks dalam modal duplicate patient */
+    html.dark .patient-name {
+      color: #f3f4f6; /* Nama pasien lebih terang */
+    }
+
+    html.dark .patient-rme {
+      color: #9ca3af; /* RME sedikit lebih redup tapi terbaca */
+    }
+
+    html.dark .patient-info {
+      color: #d1d5db; /* Info pasien lebih terbaca */
     }
 
     /* Keyframes untuk animasi kelopak bunga jatuh */
@@ -867,13 +935,13 @@
                         <p class="text-sm text-secondary mt-1">Kami menemukan data yang mirip.</p>
                     </div>
 
-                    <!-- Search Input Baru -->
+                    <!-- PERBAIKAN: Search Input dengan warna yang lebih kontras dalam mode gelap -->
                     <div class="relative mb-3">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-search text-gray-400"></i>
                         </div>
                         <input type="text" id="duplicate-search-input" 
-                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 sm:text-sm transition duration-150 ease-in-out dark:bg-gray-800 dark:border-gray-600 dark:text-white input-field" 
+                            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 sm:text-sm transition duration-150 ease-in-out dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 input-field" 
                             placeholder="Cari nama atau RME disini..." autofocus autocomplete="off">
                     </div>
                     
@@ -884,8 +952,8 @@
                 <div class="flex-1 overflow-y-auto px-6 pb-2" id="duplicate-list-container">
                     <div class="border border-gray-200 dark:border-gray-700 rounded-lg shadow-inner bg-gray-50 dark:bg-gray-900">
                         ${matchesHtml}
-                        <div id="no-duplicate-found" class="hidden p-8 text-center text-sm text-gray-500">
-                            <i class="fas fa-search-minus text-2xl mb-2 text-gray-300"></i>
+                        <div id="no-duplicate-found" class="hidden p-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-search-minus text-2xl mb-2 text-gray-300 dark:text-gray-500"></i>
                             <p>Data tidak ditemukan.</p>
                         </div>
                     </div>
@@ -2538,5 +2606,4 @@
     });
   </script>
 </body>
-
 </html>
