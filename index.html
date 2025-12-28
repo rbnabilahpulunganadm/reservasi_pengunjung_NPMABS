@@ -658,7 +658,7 @@
       switch (tabName) {
         case 'home':
           // Render halaman utama (pemilihan treatment/produk).
-          header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Reservasi Online</h1><p class="text-secondary">Pilih treatment atau produk Anda</p>${themeButton}`;
+          header.innerHTML = `<h1 class="text-2xl font-bold theme-pink">Reservasi Online</h1><p class="text-secondary">Pilih treatment atau produk Anda,<br>Setelah memilih akan muncul icon kecil sebelah kanan bawah layar anda,<br> klik itu untuk isi formulir reservasi ^_^, terimakasih</p>${themeButton}`;
           appContent.innerHTML = renderHomePage();
           setupHomeEventListeners();
           renderTreatments(state.data.treatments);
