@@ -1546,29 +1546,47 @@
       });
     }
 
-    const populateTimeOptions = () => {
-      const timeSelect = document.querySelector('select[name="visitTime"]');
-      if (!timeSelect) return;
+  const populateTimeOptions = () => {
+  const timeSelect = document.querySelector('select[name="visitTime"]');
+  if (!timeSelect) return;
 
-      const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
-      timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
-      if (isPartus) return;
+  const isPartus = state.selectedItems.some(item => item.category === 'Paket Bersalin/Partus');
+  timeSelect.innerHTML = isPartus ? '<option value="24_jam">24 Jam (Khusus Partus)</option>' : '';
+  if (isPartus) return;
 
-      let startTime = new Date();
-      startTime.setHours(10, 0, 0, 0);
-      let endTime = new Date();
-      endTime.setHours(21, 30, 0, 0);
+  let startTime = new Date();
+  startTime.setHours(10, 0, 0, 0);
+  let endTime = new Date();
+  endTime.setHours(21, 30, 0, 0);
 
-      while (startTime <= endTime) {
-        const timeString = startTime.toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }).replace(/\./g, ':');
-        timeSelect.appendChild(new Option(timeString, timeString));
-        startTime.setMinutes(startTime.getMinutes() + 30);
-      }
-    };
+  // --- KONFIGURASI JAM ISTIRAHAT ---
+  const BREAK_START_HOUR = 14; // Mulai istirahat jam 14:00
+  const BREAK_END_HOUR = 15;   // Selesai istirahat jam 15:00
+  // ---------------------------------
 
+  while (startTime <= endTime) {
+    const currentHour = startTime.getHours();
+
+    // Cek apakah waktu saat ini masuk dalam jam istirahat
+    // Logika: Jika jam >= 14 DAN jam < 15, maka anggap sebagai waktu istirahat
+    // Ini akan menyembunyikan slot 14:00 dan 14:30
+    const isBreakTime = currentHour >= BREAK_START_HOUR && currentHour < BREAK_END_HOUR;
+
+    if (!isBreakTime) {
+      const timeString = startTime.toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }).replace(/\./g, ':');
+      
+      timeSelect.appendChild(new Option(timeString, timeString));
+    }
+
+    // Tetap tambahkan 30 menit meskipun sedang istirahat, 
+    // agar loop berlanjut ke jam 15:00
+    startTime.setMinutes(startTime.getMinutes() + 30);
+  }
+  };
+    
     const updateAgeAndDay = (e) => {
       const dobInput = e.target.value;
       const ageOutput = document.getElementById('age-output');
